@@ -1,0 +1,4 @@
+2006-04-21  Hynek Hanke  <hanke@chopin>
+
+	* gen-doc.sh: Use texi2dvi instead of TeX.
+
