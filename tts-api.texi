@@ -460,7 +460,6 @@ events correspoding to the begin and end of a sentence.
 
 @code{EVENT_WORD_BEGIN} and @code{EVENT_WORD_END} are events
 corresponding to the begin and end of a word.
-
 @end deftp
 
 @anchor{say_text()}
