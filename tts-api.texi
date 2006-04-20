@@ -1,0 +1,2115 @@
+    \input texinfo   @c -*-texinfo-*-
+@c %**start of header
+@setfilename tts-api.info
+@settitle Common TTS API
+@finalout
+@c @setchapternewpage odd
+@c %**end of header
+
+@copying
+Copyright @copyright{} 2006 Brailcom, o.p.s.
+All rights reserved.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:@*
+1. Redistributions of source code of this document must retain the
+above copyright notice and this list of conditions.@*
+2. Redistributions in binary form and in printed form must reproduce the
+above copyright notice, this list of conditions and/or other materials provided
+with the distribution.@*
+3. The names of the authors may not be used to endorse or promote products
+derived from this document without specific prior written permission.
+@end copying
+
+@include macros.texi
+
+@c @set version 2006-03-09
+
+
+@c Index merging
+@syncodeindex pg cp
+@syncodeindex fn cp
+@syncodeindex vr cp
+
+@c Directory, keywords
+@dircategory Sound
+@dircategory Development
+@dircategory Accessibility
+
+@direntry
+* TTS API: (tts-api).    Common TTS API
+@end direntry
+
+@c Title page for printed version
+@titlepage
+@title Common TTS Application Interface
+@c    Document version: @VERSION
+
+@author Hynek Hanke, Brailcom <@email{hanke@@brailcom.org}>
+@author Milan Zamazal, Brailcom <@email{zamazal@@brailcom.org}>
+@author Olaf Jan Schmidt, KDE <@email{ojschmidt@@kde.org}> 
+@author Willie Walker, GNOME, Sun Microsystems <@email{willie.walker@@sun.com}>
+
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+@contents
+
+@c Title page for INFO
+@ifnottex
+@node Top, Introduction, (dir), (dir)
+@top Common TTS Application Interface
+@insertcopying
+@end ifnottex
+
+@menu
+* Introduction::                
+* Interface Description::       
+* Notes About the Interface::   
+* Requirements on the API::     
+* Extended SSML Markup::        
+* Key Names::                   
+* Requirements on the synthesizers::  
+* Related Specifications::      
+@end menu
+
+@node Introduction
+@chapter Introduction
+
+The purpose of this document is to define a common low-level interface
+for access the various speech synthesizers on Free Software and Open
+Source platforms. It is designed to be used by applications that do
+not need advanced functionality like message management (such as
+txt2wave) and by applications providing high-level interfaces (such as
+@dispatcher{}, @gnomespeech{}, @kttsd{} etc.)  The purpose of this
+document is not to define and force an API on the speech
+synthesizers. The synthesizers might use different interfaces that
+will be handled by their drivers.
+
+This interface will be implemented by a simple layer integrating
+available speech synthesis drivers and in some cases emulating some of
+the functionality missing in the synthesizers themselves.
+
+Advanced capabilities not directly related to speech, like message
+management, prioritization, synchronization etc. are left out of scope for
+this low-level interface. They will be dealt with by higher-level
+interfaces. Such a high-level interface
+(not necessarily limited to speech) will make good use of the already
+existing low-level interface.
+
+It is desirable that simple applications can use this API in a simple
+way. However, the API must also be complex enough so that it doesn't
+limit more advanced applications in use of the synthesizers.
+
+Requirements on this interface have been gathered between various accessibility
+projects, most notably KDE, GNOME, Emacspeak, Speakup and Free-b-Soft.
+They are summarized in Appendix A and Appendix B of this document. Appendix
+A deals with general requirements and required functionality, while
+Appendix B describes the extended SSML subset in use and thus also
+defines required parameter settings. The interface definition contained
+in chapter 2 were composed based on these requirements.
+
+@temporary{A goal is a real implementation of this interface in the
+near future.  The next step will be merging the available
+engine drivers in the various accessibility projects under this
+interface and using this interface. For this reason, we need all
+accessibility projects who want to participate in this common effort
+to make sure all their requirements on a low-level speech output
+interface are met and that such an interface is defined so that it is
+suitable for their needs.}
+
+@temporary{Any comments about this draft are welcome and
+useful. But since the goal of these requirements is a real
+implementation, we need to avoid endless discussions and keep the
+comments focused and to the point.}
+
+@node Interface Description
+@chapter Interface Description
+
+This section defines the low-level TTS interface for use by
+all assistive technologies on free software platforms.
+
+@menu
+* General Points::              
+* Speech Synthesis Driver Discovery::  
+* Voice Discovery::             
+* Speech Synthesis Commands::   
+* Speech Control Commands::     
+* Parameter Settings::          
+* Audio Retrieval::             
+* Event Callbacks::             
+@end menu
+
+@node General Points
+@section General Points
+
+@itemize
+
+@item
+The definition of this interface is not meant to imply that the final
+interface will be provided by C library calls. C syntax is only used
+for convenience.
+
+@item
+The interface is designed such that both a simple library interface
+and a serialized language independent character based protocol for use
+over sockets and pipes can be provided.
+
+@item
+This interface is meant to be provided by a simple process
+running the various synthesis drivers and emulating MUST HAVE
+functionality where possible and needed. It can also try to emulate
+some of the SHOULD HAVE and NICE TO HAVE capabilities at implementor's
+discretion.
+
+@item
+The interface between this library/process and the synthesis drivers
+themselves, hardware or software, will be a subset of this interface.
+
+@item
+The interface definition uses the type @code{bool} not present in C
+for variables whose value can be either @code{TRUE} or @code{FALSE}.
+@end itemize
+
+@node Speech Synthesis Driver Discovery
+@section Speech Synthesis Driver Discovery
+
+This section deals with the discovery of the synthesis drivers
+available behind this interface. It also covers discovery of the
+capabilities and voices provided by the drivers.
+
+@anchor{DriverCapabilities}
+@deftp {Variable Type} DriverCapabilities
+    
+@code{DriverCapabilities} is a structure data type intended for
+carrying information about driver capabilities.
+
+@verbatim
+typedef struct{
+
+    /* Voice discovery */ 
+    bool can_list_voices;
+    bool can_set_voice_by_properties;
+    
+    /* Prosody parameters */
+    bool can_set_voice_rate_relative;
+    bool can_set_voice_rate_absolute;
+    bool can_get_voice_rate_default;
+
+    bool can_set_voice_pitch_relative;
+    bool can_set_voice_pitch_absolute;
+    bool can_get_voice_pitch_default;
+
+    bool can_set_voice_pitch_range_relative;
+    bool can_set_voice_pitch_range_absolute;
+    bool can_get_voice_pitch_range_default;
+
+    bool can_set_voice_volume_relative;
+    bool can_set_voice_volume_absolute;
+    bool can_get_voice_volume_default;
+
+    /* Style parameters */
+    PunctuationMode punctuation_modes;
+    bool can_set_punctuation_detail;
+
+    CapitalLettersMode capital_letters_modes;
+
+    bool can_set_number_grouping;
+
+    /* Synthesis */
+    bool can_say_text_from_position;
+    bool can_say_char;
+    bool can_say_key;
+    bool can_say_icon;
+
+    /* Dictionaries */
+    bool can_set_dictionary;
+
+    /* Audio playback/retrieval */
+    OutputMethod output_methods;
+    AudioRetrievalMethod audio_retrieval_method;
+    
+    /* Events and index marking */
+    bool can_report_message_events;
+    bool can_report_events_by_sentences;
+    bool can_report_events_by_words;
+    bool can_report_custom_index_marks;
+
+    /* Performance guidelines */
+    bool honors_performance_guidelines;
+
+    /* Defering messages */
+    bool can_defer_message;
+
+    /* SSML Support */
+    bool can_parse_ssml;
+
+    /* Multilingual utterences */ 
+    bool supports_multilingual_utterances;
+}DriverCapabilities;
+@end verbatim
+@end deftp
+
+@deftp {Variable Type} DriverDescription
+@anchor{DriverDescription}
+
+@code{DriverDescription} is a structure containing information
+about a single driver.
+
+@verbatim
+typedef struct{
+    char*           driver_id;
+    char*           driver_version;
+    char*           synthesizer_name;
+    char*           synthesizer_version;
+}DriverDescription;
+@end verbatim
+
+@var{synthesizer_id} is the identification string of the driver.
+
+@var{synthesizer_version} carries information about the synthesizer
+version in use in a human readable form. There is no strict rule
+for formatting the version information inside the string as the
+versioning schemes of the various synthesizers differ significantly.
+If it is not possible to determine the synthesizer version, this string
+should be NULL.
+
+@var{synthesizer_name} is a full name of the synthesizer engine.
+
+@var{driver_version} carries information about the driver version in
+use for the given synthesizer. It has the form @code{"major.minor"}
+where @code{major} is the major version number for the driver and
+@code{minor} is the minor version number for the driver.
+
+@var{driver_capabilities} contains information about the support
+of the driver for functions and features defined in this interface.
+See (@ref{DriverCapabilities}) for a list of the available information.
+
+@mycexample{
+driver_id = "festival"
+synthesizer_name = "Festival Speech Synthesis System"
+synthesizer_version = "1.94beta"
+driver_version = "1.2"
+}
+@end deftp
+
+@deftypefun DriverDescription* list_drivers (void)
+@anchor{list_drivers()}
+
+@func{list_drivers()} returns a list of available synthesizer drivers.
+Each of the items in the list is of the type @code{DriverDescription},
+@pref{DriverDescription}, and must carry a properly filled in variable
+@var{driver_id}.
+
+@fperror
+@end deftypefun
+
+@deftypefun DriverCapabilities* driver_capabilities (char* driver_id)
+@anchor{driver_capabilities()}
+
+@func{driver_capabilities} returns a information about the
+capabilities of the driver in a @code{DriverCapabilities} structure.
+
+Under this API, not each driver is guaranteed to support all of the
+functionality as defined in this document. It must however provide the
+full set of functions. Whether the functions will have the described
+effect can be discovered by examining the entries of the
+DriverCapabilities structure and comparing them with the documentation
+for the given functions.
+
+@arg{driver_id} is the unique identification string for the
+synthesizer driver whose capabilities should be reported.  See
+@pref{list_drivers()}.
+
+This function returns a properly filled @code{DriverCapabilities}
+structure on success.
+@fperror
+@end deftypefun
+
+
+@node Voice Discovery
+@section Voice Discovery
+
+@deftp {Variable Type} VoiceDescription
+@anchor{VoiceDescription}
+
+@code{VoiceDescription} is a structure containing the description
+of a voice.
+
+@verbatim
+typedef struct{
+    char *name;
+    char *language;
+    char *dialect;
+    VoiceGender gender;
+    unsigned int age;
+}VoiceDescription;
+@end verbatim
+
+@var{name} is the name of the voice as recognized by the synthesizer.
+
+@var{language} is the ISO 639 language code represented as a character
+string. Examples are @code{en}, @code{fr}, @code{cs}.
+
+@var{dialect} is a string describing the language dialect or NULL if
+unknown or not aplicable. Examples are @code{american} or @code{british}
+with English language or @code{moravian} with Czech language.
+
+@openissue{Is there a standard way of describing dialects?}
+
+@var{gender} indicates the gender of the voice. The values @code{MALE},
+@code{FEMALE} and @code{UNKNOWN} are permitted.
+
+@var{age} gives the approximate age of the voice in years. The value
+of @code{0} means the age is unknown.
+
+@end deftp
+
+@deftypefun VoiceDescription* list_voices (char* driver_id)
+@anchor{list_voices}
+
+@func{driver_list_voices} returns the available voices for
+a given driver specified as @var{driver_id}.
+
+@arg{driver_id} is the identification string of the driver
+as returned by @func{list_drivers()} @pref{list_drivers()}.
+
+@fperror
+
+@end deftypefun
+
+@node Speech Synthesis Commands
+@section Speech Synthesis Commands
+
+Functions defined in this section generally accept a message to
+synthesize with driver, voice and other parameters
+according to the current settings at the time when the function is
+called. Several types of messages are handled by this API. It can be
+either a text message, containing plain text or SSML or any other markup,
+or it can be a 'key' or 'character' event or any general event.
+
+The functions defined in this section can only block the calling
+process for as long as is necessary to fully receive and/or transfer
+the message, which should generally be a very short time. These
+functions will not block the calling process for the time of synthesis
+of the message and audio output.
+
+The result of these commands will either be that the resulting audio
+stream is played on the speakers or that the audio stream is returned
+via the registered communication channel. Please see @ref{Audio
+Settings}.
+
+@anchor{MessageFormat}
+@deftp {Variable Type} MessageFormat
+
+@code{MessageFormat} is an enumeration type to indicate the type
+of the content of a message.
+
+@verbatim
+typedef enum{
+    MESSAGE_TYPE_SSML,
+    MESSAGE_TYPE_PLAIN
+}MessageFormat;
+@end verbatim
+
+@code{MESSAGE_TYPE_SSML} means the content of the message is text
+formated according to the Speech Synthesis Markup Language. See
+@pref{SSML}.
+
+@code{MESSAGE_TYPE_PLAIN} means the content of the message is plain
+text.
+
+@end deftp
+
+@deftp {Variable Type} MessageID
+@anchor{MessageID}
+
+@verbatim
+typedef signed int MessageID;
+@end verbatim
+
+A positive value represents the identification number of the message.  The
+value of @code{0} means 'no message' and @code{-1} means an
+error ocurred.
+@end deftp
+
+@anchor{EventType}
+@deftp {Variable Type} EventType
+
+@code{EventType} is used to describe the type of an event both in the
+original text and in the synthesized audio data.
+
+@verbatim
+typedef enum{
+    EVENT_MESSAGE_BEGIN,
+    EVENT_MESSAGE_END,    
+    EVENT_SENTENCE_BEGIN,
+    EVENT_SENTENCE_END,
+    EVENT_WORD_BEGIN,
+    EVENT_WORD_END,
+    EVENT_NONE
+}EventType;
+@end verbatim
+
+@code{EVENT_MESSAGE_BEGIN} and @code{EVENT_MESSAGE_END} are events
+correspoding to the begin and end of the message.
+
+@code{EVENT_SENTENCE_BEGIN} and @code{EVENT_SENTENCE_END} are
+events correspoding to the begin and end of a sentence.
+
+@code{EVENT_WORD_BEGIN} and @code{EVENT_WORD_END} are events
+corresponding to the begin and end of a word.
+
+@end deftp
+
+@anchor{say_text()}
+@deftypefun MessageID say_text (MessageFormat format, char* text, unsigned int position, EventType position_type)
+
+@func{say_text} accepts a text message to synthesize and starts synthesis
+on the given position.
+
+@var{position} and @var{position_type} describes the position in the
+message where synthesis should be started. @var{position} is a counter
+of events of type @var{position_type} from the beginning of the
+message. So for example the position @code{2} of event
+@code{EVENT_WORD_START} describes the start of the second word.
+
+There is no explicit upper limit on the size of the text, but the
+server administrator may set one in the configuration or the limit can
+be enforced by available system resources.  If the limit is exceeded,
+the whole text is accepted, but the excess is ignored and an
+error is returned.
+
+When a markup language, such as SSML, is being used as the format
+of the text, this markup may or may not be checked for validity,
+according to users settings. If a validity check is performed and
+the text is found to be invalid, an error code is returned and the
+text is not processed further.
+
+@arg{format} is a format of the message according to @pref{MessageFormat}.
+
+@arg{text} is the text to be synthesized in the form according to the
+value of the @var{format} argument.
+
+@arg{position} is an unsigned number counting the events of the given
+type starting from '1'. If @var{position_type} is set to
+@code{EVENT_MESSAGE_BEGIN}, the value of this argument is irrelevant
+and is conventionally set to @code{0}.
+
+@arg{position_type} is one of @code{EVENT_MESSAGE_BEGIN},
+@code{EVENT_SENTENCE_START}, @code{EVENT_SENTENCE_END},
+@code{EVENT_WORD_BEGIN} and @code{EVENT_WORD_END}.
+
+On success, a unique message ID is returned.
+@fierror
+
+For example calling say_text() with the following arguments
+@example @code
+say_text(MESSAGE_TYPE_PLAIN, "This is an example.", 3, EVENT_WORD_BEGIN)
+@end example
+should result in audio which starts with the word 'an' and continues
+to the end of the sentence.
+
+@note{For longer and more complicated texts, it will not be possible
+to say in advance where the audio will start knowing just the original
+text of the message and the position description. The placing of
+events across the original text may be ambiguous and depends on the
+synthesizer. However, this capability is designed for purposes like
+rewinding (rewind 5 sentences forward) or context pause (resume
+speaking from a place which we already got event information about
+when we executed pause).  The application must not try to guess where
+exactly the events are and rely on that guess if it did not receive
+the information from the synthesizer earlier.}
+@end deftypefun
+
+@deftypefun MessageID say_defered (MessageID message_id, signed int position_from, PositionType position_type)
+@anchor{say_defered()}
+
+@func{say_defered} works just like @func{say_text}, except it works on
+messages which were previously defered. Please see @pref{defer()}.
+
+@arg{message_id} is the id of the message to synthesize, as obtained by
+@func{defer()}.
+@end deftypefun
+
+@deftypefun int say_key (char* key_name)
+
+@func{say_key} accepts a key name to synthesize. The command is
+intended to be used for speaking keys pressed by the user.
+
+@arg{key_name} is a valid key name as defined in @ref{appendix-C}.
+
+On success, a unique message ID is returned.
+@fierror
+@end deftypefun
+
+@deftypefun MessageID say_char (char* char)
+
+@func{say_char} accepts a letter (or syllable if the language doesn't
+have individual letters) to synthesize. The command is intended to be
+used for speaking single character messages, produced when the user is
+moving the cursor over a word.
+
+@arg{char} is the character to synthesize.
+
+@fireturn
+@end deftypefun
+
+@deftypefun MessageID say_icon (char* icon)
+
+@func{say_icon} accepts a general sound icon to synthesize.  The
+command is intended to be used for general events like `new-line',
+`message-arrived', `question' or `new-email' . The exact sound
+produced or text synthesized depends on user's configuration.
+
+If the icon name is not recognized by the synthesizer, the
+synthesizer tries to synthesize the name of the event itself.
+
+@arg{icon} is the name of the icon to synthesize. It must not contain
+any whitespace characters.
+
+On success, a unique message ID is returned.
+@fierror
+@end deftypefun
+
+@node Speech Control Commands
+@section Speech Control Commands
+
+@deftypefun MessageID cancel (void)
+
+@func{cancel} immediately stops synthesis and audio output of the
+current message. When this function returns, the audio output is fully
+stopped and the synthesizer is ready to synthesize a new message.
+
+If this function is called during the transfer of audio data to the
+application, the data block currently being transfered is completed and
+no further data block is sent.
+
+On success, return value is the unique message ID of the message that
+was stopped.  Calling this command when no message is being processed is
+not considered an error and the return value is @code{0}, meaning 'no
+message'.
+@fierror
+
+@end deftypefun
+
+@anchor{defer()}
+@deftypefun MessageID defer (void)
+
+@func{defer} is similar to @func{cancel} except after stopping the
+synthesis process and audio playback the message is not thrown away in
+the synthesizer, but data that might be usefull for future working
+with the message (as rewinding, repeating or resuming the synthesis
+process) are preserved. This might or might not include the original
+text of the message. In either case, at least as much information must
+be preserved, that the synthesizer is able to fully reproduce the
+audio data for the message.
+
+If this function is called during the transfer of audio data to the
+application, the data block currently being transfered is completed and
+no further data block is sent.
+
+If this function is called after all the audio has been already
+transfered to the application, but before another synthesis request is
+issued, with no cancel() request in between, the data for the previous
+message are stored.
+
+On success, a unique identifier for the message is returned. See
+@pref{MessageID}.
+@fierror
+@end deftypefun
+
+@deftypefun int discard (MessageID message)
+
+Discards a previously defered message. The driver/engine
+will drop all information about this message and the
+message will be removed from the list of paused messages.
+
+See @pref{defer()}.
+
+@arg{message} is the message ID of the message to discard.
+Passing an ID of a message that is not paused is considered
+an error.
+
+@fireturn
+@end deftypefun
+
+@node Parameter Settings
+@section Parameter Settings
+
+@menu
+* Driver Selection and Parameters::  
+* Voice Selection::             
+* Prosody Parameters::          
+* Style Parameters::            
+* Dictionaries::                
+* Audio Settings::              
+@end menu
+
+@node Driver Selection and Parameters
+@subsection Driver Selection and Parameters
+
+@deftypefun int set_driver (char* driver_id)
+
+Set the synthesis driver. See @ref{list_drivers()}.
+
+@arg{driver_id} is the unique ID of the driver
+as returned by list_drivers().
+
+@end deftypefun
+
+@node Voice Selection
+@subsection Voice Selection
+
+Setting parameters in this section only has effect until the
+synthesizer is changed.
+
+@deftypefun int set_voice_by_name (char* voice_name)
+
+@func{set_voice_by_name} selects the voice with the given name.
+
+@arg{voice_name} is the name of the desired voice. It must be one of
+the names returned by @code{list_voices()}.  See @ref{list_voices}.
+
+@fireturn
+@end deftypefun
+
+@deftypefun int set_voice_by_properties (VoiceDescription *voice_description, unsigned int variant)
+
+@func{set_voice_by_properties} selects a voice most closely matching
+the given description. The exact voice selected might be subject to
+user preference settings for voice selection inside the synthesizer.
+
+There is no guarantee that any of the given parameters will be
+respected, although language generally is supposed to be respected,
+unless impossible or unless the user wishes otherwise.
+
+In case no voice matches the given language, the synthesizer should
+pick the general default voice (if aplicable) or to choose a voice at
+random. This alone is not considered an error and must not be a reason
+for the synthesizer to refuse further synthesis requests unless for
+some other related reason (as for example the voice being unable to
+handle the given UTF-8 character range).
+
+The application can check which voice was selected and how closely (if
+at all) it matches the given description.
+
+@arg{voice_description} is a description of the desired voice. Any of
+its entries can be filled in or left blank. Please see
+@ref{VoiceDescription} for more information about the format and
+allowed values.
+
+@arg{variant} is an unsigned number specifying which of the voices
+matching the description and assigned equal priority inside the
+synthesizer should be selected.
+
+@note{This function is different from performing @code{voice_list} and
+following that with @code{set_voice_by_name} as user settings about
+voice selection inside the synthesizer are respected.}
+
+@fireturn
+
+@end deftypefun
+
+@node Prosody Parameters
+@subsection Prosody parameters
+
+Setting parameters in this section only has effect until the
+synthesizer is changed.
+
+@deftypefun int set_prosody_rate_relative (signed int rate_relative)
+@deftypefunx int set_prosody_rate_absolute (unsigned int rate_absolute)
+@deftypefunx {unsigned int} get_prosody_rate_absolute_default (void)
+
+Set/get the rate of speech. 
+
+@arg{rate_relative} represents the relative change with respect to the
+default value for the given voice. For example @code{0} means the
+default value for the given voice while @code{-50} means a fifty
+percent lower rate with respect to the default.
+
+@arg{rate_absolute} is the desired rate in words per minute.
+
+@fireturn
+@end deftypefun
+
+@deftypefun int set_prosody_pitch_relative (signed int pitch_relative)
+@deftypefunx int set_prosody_pitch_absolute (unsigned int pitch_absolute)
+@deftypefunx {unsigned int} get_prosody_pitch_absolute_default (void)
+
+Set/get the voice base pitch.
+
+@arg{pitch_relative} represents the relative change with respect to the default
+value for the given voice. For example @code{0} means the default
+value for the given voice while @code{-50} means a fifty percent lower
+pitch with respect to the default.
+
+@arg{pitch_absolute} is the desired pitch in Hz.
+
+@fireturn
+@end deftypefun
+
+@deftypefun int set_prosody_pitch_range_relative (signed int range)
+
+Set voice pitch range in relative units. Pitch range is how much pitch
+changes in intonation with respect to the base pitch.
+
+@arg{pitch} represents the relative change with respect to the default
+value for the given voice. For example @code{0} means the default
+value for the given voice while @code{-50} means a fifty percent lower
+pitch range with respect to the default.
+@end deftypefun
+
+@deftypefun int set_prosody_pitch_range_absolute (unsigned int range)
+
+@openissue{How should this work? It is not clear from the SSML specs.} 
+
+@fireturn
+@end deftypefun
+
+@deftypefun int set_prosody_volume_relative (signed int volume_relative)
+@deftypefunx int set_prosody_volume_absolute (unsigned int volume_absolute)
+@deftypefunx {unsigned int} get_prosody_volume_absolute_default ()
+
+Set/get the volume of speech.
+
+@arg{volume_relative} represents the relative change with respect to the
+default value for the given voice. For example @code{0} means the
+default value for the given voice while @code{-50} means a fifty
+percent lower volume with respect to the default.
+
+@arg{volume_absolute} is a number from the range 0 to 100 where
+the value of @code{0} means silence and @code{100} means
+maximum volume.
+
+@fireturn
+@end deftypefun
+
+@node Style Parameters
+@subsection Style parameters
+
+@deftp {Variable Type} PunctuationMode
+@anchor{PunctuationMode}
+
+@code{PunctuationMode} is an enumerate variable type containing
+information about punctuation signalization mode.
+
+@verbatim
+typedef enum{
+    PUNCTUATION_NONE,
+    PUNCTUATION_ALL,
+    PUNCTUATION_SOME
+}PunctuationMode;
+@end verbatim
+
+@code{PUNCTUATION_NONE} means no punctuation is signaled.
+
+@code{PUNCTUATION_ALL} means all punctuation characters are signaled.
+
+@code{PUNCTUATION_SOME} means only selected punctuation characters
+are signaled. (See @ref{set_style_punctuation_detail}).
+@end deftp
+
+@deftypefun int set_style_punctuation (PunctuationMode mode)
+@anchor{set_style_punctuation}
+
+Set punctuation reading mode. In other words, this influences which
+punctuation characters will be signaled while reading the text.
+Signalling means either synthesizing their name (e.g. `qustion mark')
+or playing the appropriate sound icon, according to user settings
+inside the synthesizer.
+
+For example the `.' (dot) and `?' (question mark) are not normally
+pronounced and their presence only influences the intonation of the
+sentence. However, in some cases like copyediting a text or editing a
+program source code, it is desirable to have them spoken or otherwise
+indicated.
+
+@arg{mode} is one of @code{PUNCTUATION_NONE}, @code{PUNCTUATION_ALL}
+and @code{PUNCTUATION_SOME} (See @ref{set_style_punctuation_detail})
+as defined in @ref{PunctuationMode}.
+
+@fireturn
+@end deftypefun
+
+@deftypefun int set_style_punctuation_detail (char *detail)
+@anchor{set_style_punctuation_detail}
+
+@func{set_style_punctuation_detail} influences which punctuation
+characters should be signaled when the punctuation mode is
+set to @code{PUNCTUATION_SOME} (See @ref{set_style_punctuation})
+
+@arg{detail} is a string enumerating the punctuation characters
+that should be signaled without any spaces.
+
+@myexample{
+    set_style_punctuation_detail("?!.#");
+}
+@end deftypefun
+
+@deftp {Variable Type} CapitalLettersMode
+@anchor{CapitalLettersMode}
+
+@code{CapitalLettersMode} is an enumerate variable type containing
+information about selected mode for signalling capital letters.
+
+@verbatim
+typedef enum{
+    CAPITAL_LETTERS_NO,
+    CAPITAL_LETTERS_SPELLING,
+    CAPITAL_LETTERS_ICON,
+    CAPITAL_LETTERS_PITCH,
+}PunctuationMode;
+@end verbatim
+
+@code{CAPITAL_LETTERS_NO} means no signalling of capital letters.
+
+@code{CAPITAL_LETTERS_SPELLING} means that each capital letter is
+prepended with the word ``capital'' or similar appropriate for
+the given language. Alternatively, the whole word containing the
+capital letter may be spelled. These two approaches may be combined.
+
+For example the text ``My name is John'' would be read as ``Capital
+my name is capital John.'' or ``Capital m way name is capital j ou age
+en.''.
+
+@c The example neads cleanup
+
+@code{CAPITAL_LETTERS_ICON} means that each capital letter is prepended
+with a sound icon.
+
+The above example text ``My name is John'' would be read as ``*ding*
+My name is *ding* John'' where *ding* is the appropriate sound for
+capital letter signalling as provided by the synthesizer or
+configured by the user.
+
+@code{CAPITAL_LETTERS_PITCH} is a method where capital letters are
+indicated by raising pitch of the voice when reading them.
+
+@openissue{How exactly does @code{CAPITAL_LETTERS_PITCH} work?}
+@end deftp
+
+@deftypefun int set_style_capital_letters (CapitalLettersMode mode)
+
+@func{set_style_capital_letters} sets the capital letters speaking
+mode as requested.
+
+When the engine is not able to set the requested mode, but
+it is able to set some other mode, this should be done.
+
+@arg{mode} is one of @code{CAPITAL_LETTERS_NO},
+@code{CAPITAL_LETTERS_SPELLING}, @code{CAPITAL_LETTERS_ICON} and
+@code{CAPITAL_LETTERS_PITCH} as defined in @ref{CapitalLettersMode}.
+
+@fireturn
+@end deftypefun
+
+@deftypefun int set_style_number_grouping (unsigned int grouping)
+
+Sets how many digits should be grouped together when reading
+a number. See @ref{tts:digits} for a detailed description of the
+functionality.
+
+@arg{grouping} a positive number indicating how many digits
+should be grouped together or @code{0} for reading numbers
+as a whole.
+
+@fireturn
+@end deftypefun
+
+@node Dictionaries
+@subsection Dictionaries
+
+@deftypefun int set_dictionary (Dictionary dictionary)
+@openissue{How should this work? What is the Dictionary type?}
+
+@fireturn
+@end deftypefun
+
+@node Audio Settings
+@subsection Audio Settings
+
+Generally, there are two ways of dealing with audio. Either the
+application can ask over this API to get the synthesized audio samples
+as data or it can ask for it to be played (on computer speakers or the
+internal speakers of hardware devices). Of course not for every
+synthesizer are both options available.
+
+In the case where the application asks for the audio to be played on the
+speakers, the means of handling audio events and index marking will be
+callbacks (handled either as function callbacks or asynchronous socket
+notifications). This way, event signalling and/or index marking
+callbacks can be provided by every synthesizer which supports
+synchronization and/or index marking, regardless of whether it plays
+audio itself or it gives data to its driver.
+
+If the application asks for audio data to be returned to the
+application, then event marks and custom index marks are embedded as
+additional information in the retrieved audio data blocks. This is
+more accurate and is very useful when the application doesn't want to
+play the audio immediately, but it wants to store it either as a file
+or in memory. However, this is only possible with synthesizers that
+can give audio data to its driver.
+
+Of course it is possible to discover the capabilities of each driver
+in advance. See @pref{Speech Synthesis Driver Discovery}.
+
+@deftp {Variable Type} OutputMethod
+
+@anchor{OutputMethod}
+@code{OutputMethod} is an enumerated variable type
+for selecting the audio output method for the synthesizer.
+
+@verbatim
+typedef enum{
+    OUTPUT_AUDIO_PLAYBACK,
+    OUTPUT_AUDIO_RETRIEVAL,
+}AudioRetrievalMethod;
+@end verbatim
+
+@code{OUTPUT_AUDIO_PLAYBACK} means the audio should be
+played on the synthesizer or automatically sent to playback.
+
+@code{OUTPUT_AUDIO_RETRIEVAL} means the audio should be
+returned to the application from the synthesizer.
+@end deftp
+
+@anchor{set_output}
+@deftypefun int set_output (OutputMethod method)
+
+This option deals with the output of the synthesizer.
+The two possibilities are to have the audio played (which
+is the only possibility for some synthesizers) or have
+audio retrieved over a socket as a series of data blocks
+(either synchronously or asynchronously).
+
+@arg{method} is either @code{OUTPUT_AUDIO_PLAYBACK} or
+@code{OUTPUT_AUDIO_RETRIEVAL}. See @pref{OutputMethod}.
+
+@fireturn
+@end deftypefun
+
+@anchor{set_audio_retrieval_destination()}
+@deftypefun int set_audio_retrieval_destination (char *host, unsigned int port)
+
+Sets the TCP socket where audio data should be sent. See @pref{Audio
+Retrieval} for more details.
+
+@arg{host} is the IP address of the machine where audio data should be
+delivered.
+
+@arg{port} is the port on the machine where audio data should be
+delivered.
+
+@fireturn
+@end deftypefun
+
+@node Audio Retrieval
+@section Audio Retrieval
+
+This section deals with the situation when the application wants to
+retrieve audio data from the synthesizer as described in @pref{Audio
+Settings}.
+
+The audio data are delivered over a TCP socket on the
+address specified by the application using
+@code{set_audio_retrieval_destination()}. 
+
+For each message sent to the synthesizer, one or more data blocks are
+delivered asynchronously over the socket. Each data block contains
+identification of the original message and the serial number of the
+block, information about the audio format in use, events and custom
+index marks in the given block and the audio data itself.
+
+Each data block is composed of four sections: @code{BLOCK} acting as a
+header specifying which message this data belongs to,
+@code{PARAMETERS} carying information about the parameters of the
+audio data, @code{EVENTS} as a list of events and custom index marks
+reached in this audio data and @code{DATA} containing the data itself.
+
+The following syntax is used for each block:
+@example
+@code{BLOCK} @var{msg_id} @var{block_number}
+@code{PARAMETERS}
+@code{data_format}=@var{data_format}
+@code{data_length}=@var{data_length}
+@code{audio_length}=@var{audio_length}
+@code{bitrate}=@var{bitrate}
+@code{sample_rate}=@var{sample_rate}
+@code{channels}=@var{channels}
+@code{architecture}=@var{architecture_string}
+@code{END OF PARAMETERS}
+@code{EVENTS}
+@var{type}    @var{text_position}       @var{time_position}
+@code{END OF EVENTS}
+@code{DATA}
+@var{audio_data}
+@code{END OF DATA}
+@end example
+
+@heading @code{BLOCK}
+
+@var{msg_id} is the unique identification number of the message this
+audio data belongs to.
+
+@var{block_number} is positive string-represented number indicating
+the position of this
+audio chunk in the resulting audio for the message. @var{block_number}
+one means the first part of the data.
+
+@heading @code{PARAMETERS}
+
+The parameters section contains the following parameters (not all of
+them are allways used). 
+
+@var{data_format} is a string identification of the format of the
+audio data.  Recognized names are: ``raw'', ``wav'' and ``ogg''.
+This parameter is required.
+
+@openissue{Is there any specification that we could refer here so that
+we do not need to enumerate the possible values? The goal of this
+specification is not to dictate which data format should be used.}
+
+@var{data_length} is an unsigned string-represented number indicating
+the length of the data contained in the @code{DATA} section in bytes.
+This parameter is required.
+
+@var{audio_length} is an unsigned string-represented number indicating
+the length of the audio data contained in the @code{DATA} section
+in miliseconds.
+This parameter is required.
+
+@var{bitrate}, @var{sample_rate} and @var{channels} are only used for
+the ``raw'' data format and they are string-represented numbers
+describing the three common audio parameters.
+
+@var{architecture} is a string describing the architecture details
+of the sender machine relating to the audio data sent. This parameter
+is only used for the ``raw'' audio output. It has the following usual form: 
+
+@example
+@var{signdness}@var{bits-per-word}_@var{endian}
+@end example
+
+where @var{signdness} is either @code{S} or @code{U} for
+signed or unsigned data type, @var{bits-per-word} is a two
+digits number representing word data width and @var{endian}
+is either @code{LE} for little endian or @code{BE} for big
+endian.
+
+@anchor{EVENTS}
+@heading @code{EVENTS}
+
+The events section contains zero or more lines, each of them representing
+an event or a custom index mark which is reached in the sent audio data
+chunk, giving its order and position in both the original message text and the
+synthesized audio.
+
+The synthesisizer or synthesizer driver will only report as much information
+as is possible. The @code{message_start} and @code{message_end} events must
+allways be signalled, though.
+
+@itemize
+
+@item
+Eeach line for the `message' event has the following form
+
+@example
+message_start
+@end example
+
+or
+
+@example
+message_end
+@end example
+
+@item
+Each line for a `sentence / word event' has the following form
+
+@example
+@var{type}    @var{n}   @var{pos_text}    @var{pos_audio}
+@end example
+
+@var{type} is the type of the event, one of: @code{message_start},
+@code{message_end}, @code{word_start}, @code{word_end}, @code{sentence_start},
+@code{sentence_end}.
+
+@var{n} is the number of the event starting from one.
+
+@var{pos_text} is the position of the event in the original text  represented in bytes.
+
+@openissue{The position in bytes is coding dependent. This protocol uses UTF-8,
+so the reported position must be with respect to UTF-8 encoded text, but the synthesizer
+or the application might use UTF-32. There is no easy way to convert the byte position
+as characters in UTF-8 are variable-width. Is this a problem?}
+
+@var{pos_audio} is the position of the event in the returned audio in miliseconds. This
+position is given with respect to the beginning of the message, not the current audio
+block.
+
+@item
+Each line for the `custom index mark' event has the following form
+
+@example
+index_mark @var{name} @var{pos_text} @var{pos_audio}
+@end example
+
+@var{name} is the name of the index mark as included in the SSML mark element
+by the application.
+
+@var{pos_text} and @var{pos_audio} have exactly the same meaning as
+defined above for the sentence / word event.
+@end itemize
+
+@heading @code{DATA}
+
+The section @code{DATA} contains audio data in exactly the lenght as is specified
+by the @code{data_length} parameter in the @code{PARAMETERS} section for the given
+block.
+
+@heading Example
+
+Bellow is an example of audio data for a message being sent in
+a single block:
+@example
+BLOCK 142 1
+PARAMETERS
+data_format=raw
+data_lenght=109368 (bytes)
+audio_length=1240  (ms)
+bitrate=16
+sample_rate=44100
+channels=1
+architecture=S16_LE
+END OF PARAMETERS
+EVENTS
+message_start
+word_start       1           0       12
+sentence_start   1           0       12
+index_mark       my-1        14      123
+word_start       1           19      442
+index_mark       my-2        31      821
+word_start       2           31      821
+message_end
+END EVENTS
+DATA
+here are the audio data
+END OF DATA
+@end example
+
+@node Event Callbacks
+@section Event Callbacks
+
+If the output method is set for audio playback, meaning the audio
+is being played on the speakers behind this API, events and custom
+index marks are reported through callbacks.
+
+@anchor{CallbackFunction}
+@deftp {VariableType} CallbackFunction
+
+Type for a function to be used as a callback for reporting
+events and custom index markers.
+
+@verbatim
+typedef int CallbackFunction(EventType *event,
+    signed int *n, size_t *text_pos, size_t *audio_pos,
+    char **name);
+@end verbatim
+
+@var{event} is the type of the event reported. @pref{EventType}
+
+@var{n}, @var{text_pos} and @var{audio_pos} are defined
+in @pref{EVENTS}. Where not aplicable (@var{n} for index marks
+and all three for message events), these variables are set to -1.
+
+@var{name} is only used when the event is of type custom index mark
+and contains the name of the index mark. Otherwise its value is set to NULL.
+
+@end deftp
+
+@deftypefun int register_callback (CallbackFunction* callback_function)
+
+This function registers a function to be called whenever an event
+or a custom index mark is reached during playing the audio for
+the synthesized message on the speakers.
+
+@arg{callback_function} is the function to be used as a callback. Please
+see @pref{CallbackFunction} for details about the exact form.
+
+@fireturn
+@end deftypefun
+
+@node Notes About the Interface
+@chapter Notes About the Interface
+
+@heading Intended use 
+
+The primary use for this interface is access of applications to a low
+level layer, provided either by a process or a library, managing the
+synthesizer drivers.
+
+A subset of this interface can however be used to interface this low level
+layer with the synthesizer drivers themselves. Even the capabilities provided
+by a driver itself and those provided by the interface using this same driver can
+differ as some functionality can be emulated by this low level library or process.
+Notably SSML conversion or stripping, [interfacing with] audio output and
+callbacks.
+
+The audio retrieval method is designed in such a way that it will bypass
+this middle layer when the application wants to receive audio, and it can
+also possibly bypass the driver if the synthesizer supports it, resulting
+in better performance.
+
+@heading Repeat, rewind, context pause
+
+The rewind and context pause functionality can be implemented in applications for
+every syntesizer that supports some kind of event notification for
+plain text messages. For SSML messages, support for the variable
+position start inside the message, as described in @pref{say_text()}
+is needed. The least granularity for rewind and context pause is
+determined by the granularity with which the synthesizer supports
+events notification.
+
+Rewind can work as follows: The event notification mechanism is used to
+determine the current position in the spoken text. The message is first
+canceled or defered. The synthesis process is started again from a position
+n words or sentences forward or backward. If the synthesizer does not support
+this functionality, this can be emulated for plain text by simply sending
+only the desired part of the text. The application can possibly
+take advantage of the audio data already received.
+
+The working of context pause is analogical.
+
+If supported by the synthesizer, the higher level can also make
+use of the defer() @pref{defer()} functionality for better performance.
+This way, the text of the message does not need to be transfered
+again after each pause or resume and the synthesizer can make use
+of the already archieved results, particularly SSML parsing and
+syntax analysis.
+
+@heading Audio formats in use
+
+This interface does not enforce any particular audio format to be used by
+the synthesizer. The API used to interface synthesizers should not limit
+the synthesizers or the applications in the formats used to transfer audio.
+
+Limits will however be given by the implementation of the audio output
+mechanism in use. Any audio output format fits these requirements, but
+synthesizer and synthesizer driver authors must be aware that
+output in a format not supported by the audio technology in use will
+be useless for the user.
+
+@macro bibitem{short, name, version, author, url}
+@item
+@anchor{\short\}
+@emph{[\short\]}, \name\, \author\, @*
+@url{\url\}
+@end macro
+
+@node Requirements on the API
+@appendix Requirements on the API
+@anchor{appendix-A}
+
+This section defines a set of requirements on the interface and on
+speech synthesizer drivers that need to support assistive
+technologies on free software platforms.
+
+@menu
+* Design Criteria::             
+* Synthesizer Discovery Requirements::  
+* Synthesizer Configuration Requirements::  
+* Synthesis Process Requirements::  
+* Performance Guidelines::      
+@end menu
+
+@sect{1, Design Criteria}
+
+The Common TTS Driver Interface requirements will be developed
+within the following broad design criteria:
+
+@itemize @w{}
+@para{A.1.1,}
+Focus on supporting assistive technologies first.  These
+assistive technologies can be written in any programming language
+and may provide specific support for particular environments such
+as KDE or GNOME.
+
+@para{A.1.2,}
+Simple and specific requirements win out over complex and
+general requirements.
+
+@para{A.1.3,} 
+Use existing APIs and specs when possible.
+
+@para{A.1.4,} 
+All language dependent functionality with respect to
+text processing for speech synthesis should be covered in the
+synthesizers or synthesis drivers, not in applications.
+
+@para{A.1.5,}
+Requirements will be categorized in the following priority
+order: @must{}, @should{}, and @niceto{}.
+
+The priorities have the following meanings with respect
+to the drivers available under this API:
+@itemize
+@item @must{}
+All drivers must satisfy this requirement.
+@item @should{}
+The driver will be usable without this feature, but
+it is expected the feature is implemented in all drivers
+intended for serious use.
+@item @niceto{}
+Optional features.
+@end itemize
+
+Regardless of the priority, full interface will be provided by the
+API, even when the given functionality is actually not implemented
+behind the interface.
+
+@para{A.1.6,} 
+Requirements outside the scope of this document will be
+labelled as @outofscope{}.
+
+@para{A.1.7,} 
+An application must be able to determine if @should{}
+and @niceto{} features are supported for a given driver.
+
+(See API @pref{list_drivers()}).
+
+@end itemize
+
+@sect{2, Synthesizer Discovery Requirements}
+
+@itemize @w{}
+
+@para{A.2.1., @must}
+An application will be able to discover all speech synthesizer drivers
+available to the machine.
+
+See API @pref{Speech Synthesis Driver Discovery}.
+
+@para{A.2.2., @must}
+An application will be able to discover all possible
+voices available for a particular speech synthesizer driver.
+
+See API @pref{list_voices}.
+
+@para{A.2.3., @must}
+An application will be able to determine the
+supported languages, possibly including also a dialect or a
+country, for each voice available for a particular speech
+synthesizer driver.
+
+@rationale{Knowledge about available voices and languages is
+necessary to select proper driver and to be able to select a
+supported language or different voices in an application.}
+
+See API @pref{Speech Synthesis Driver Discovery} and @pref{Voice Discovery}.
+
+@para{A.2.4., @must}
+Applications may assume their interaction with the speech synthesizer
+driver does not cause inappropriate blocking of system resources or
+affect other operating system components in any unexpected way.
+Especially, the synthesizer must not block audio output for other
+applications.
+
+@para{A.2.5., @outofscope} Higher level communication interfaces 
+to the speech synthesizer drivers. Exact form of the
+communication protocol (text protocol, IPC etc).
+
+@note{It is expected they will be implemented by particular
+projects (@gnomespeech{}, @kttsd{}, @dispatcher{}) as wrappers
+around the low-level communication interface defined below.}
+
+@end itemize
+
+@sect{3, Synthesizer Configuration Requirements}
+
+@itemize @w{}
+
+@para{A.3.1, @must}
+An application will be able to specify the default
+voice to use for a particular synthesizer, and will be able to
+change the default voice in between `speak' requests.
+
+See API @pref{Voice Selection}.
+
+@para{A.3.2, @should} An application will be able to specify the default
+prosody, voice attributes and style settings for a voice for a given
+message by calling explicit functions for setting these parameters.
+These settings will match those defined in the SSML specification
+(@pxref{appendix-B}), and the synthesizer may choose which attributes
+it wishes to support.  Note that prosody, voice and style elements
+specified in SSML sent as a `speak' request will temporarily override
+the default values.
+
+@para{A.3.3, @should}
+An application should be able to provide the
+synthesizer with an application-specific pronunciation lexicon
+addenda.  Note that using `phoneme' element in SSML is another way to
+accomplish this on a very localized basis, and will override any
+pronunciation lexicon data for the synthesizer.
+
+@rationale{This feature is necessary so that the application is
+able to speak artificial words or words with explicitly modified
+pronunciation (e.g. "the word ... is often mispronounced as ...
+by foreign speakers").}
+
+See API @pref{Dictionaries}.
+
+@para{A.3.4., @must}
+Applications may assume they have their own local
+copy of a synthesizer and voice.  That is, one application's
+configuration of a synthesizer or voice should not conflict with
+another application's configuration settings.
+
+@para{A.3.5., @must}
+Changing the default voice or style and prosody settings does not
+affect a `speak' in progress.
+
+@end itemize          
+
+@sect{4, Synthesis Process Requirements}
+@itemize @w{}
+
+@para{A.4.1, @must}
+The speech synthesizer driver is able to process
+plain text (i.e. text that is not marked up via SSML) encoded in
+the UTF-8 character encoding.
+
+See API @pref{say_text()}.
+
+@para{A.4.2, @must}
+The speech synthesizer driver is able to process text formatted using
+extended SSML markup defined in (@pxref{appendix-B}) of this document and
+encoded in UTF-8.  The synthesizer may choose to ignore markup it
+cannot handle or even to ignore all markup as long as it is able to
+process the text inside the markup.
+
+@para{A.4.3, @should}
+The speech synthesizer driver is able to properly process the extended
+SSML markup defined in the (@pxref{appendix-B}). of this document as SHOULD
+HAVE. Analogically for NICE TO HAVE.
+
+@para{A.4.4, @must}
+An application must be able to cancel a synthesis
+operation in progress.  In case of hardware synthesizers, or
+synthesizers that produce their own audio, this means cancelling
+the audio output as well.
+
+See API @pref{Speech Control Commands}.
+
+@para{A.4.5, @removed{Moved to performance guidelines.}}
+
+@para{A.4.6., @should}
+The speech synthesizer driver should honor the
+Performance Guidelines described below.
+
+@para{A.4.7., @niceto}
+It would be nice if the interface supported
+"rewind" and "repeat" functionality for an utterance.
+
+@rationale{This allows moving over long texts without the need to
+synthesize the whole text and without loosing context.}
+
+See API @pref{Speech Control Commands}
+
+@para{A.4.8, @niceto}
+It would be nice if a synthesizer were able to
+support multilingual utterances.
+
+@para{A.4.9, @must}
+If the synthesized audio is being played, it must be possible
+to discover when the playback started and when it terminated.
+
+@para{A.4.10, @niceto}
+It would be nice if the synthesizer supported notification of custom
+index marks inserted as the `mark' element, and it the application was
+able to align these events with the synthesized audio.
+
+@para{A.4.11, @niceto}
+It would be nice if a synthesizer supported ``word started'',``word
+ended'', ``sentence started'' and ``sentence ended'' events and
+allowed alignment of the events similar to that in 4.9.
+
+@rationale{This is useful to update cursor position as a displayed
+text is spoken. It is also essential for rewinding and context pause
+capabilities.}
+
+@para{A.4.12, @removed{not directly important for accessibility}}
+
+The former version: It would be nice if a synthesizer supported
+timing information at the phoneme level and allowed alignment of
+the events similar to that in 4.9. @rationale{This is useful
+for talking heads.}
+
+@para{A.4.13., @niceto}
+The application must be able to pause and resume
+a synthesis operation in progress while still being able to handle
+other synthesis requests in the meantime.  In case of hardware
+synthesizers, this means pausing and if possible resuming the
+audio output as well.
+
+See API @pref{Speech Control Commands}.
+
+@para{A.4.14, @removed{not clear purpose and against SSML specification}}
+The synthesizer should not try to split the contents of the `s' SSML
+element into several independent pieces, unless required by a markup
+inside. @rationale{An application may have better information about
+the synthesized text and perform its own splitting of sentences.}
+
+@para{A.4.15, @outofscope}
+Message management (queueing, ordering,
+interleaving, etc.).
+
+@para{A.4.16, @outofscope}
+Interfacing software synthesis with audio output.
+
+@para{A.4.17, @outofscope}
+Specifying the audio format to be used by a synthesizer.
+
+@end itemize
+
+@sect{5, Performance Guidelines}
+
+In order to make the speech synthesizer driver actually usable with
+assistive technologies, it must satisfy certain performance
+expectations.  The following text provides a clue to the driver
+implementors to get a rough idea about what is needed in practice.
+
+Typical scenarios when working with a speech enabled text editor:
+
+@itemize @w{}
+
+@para{A.5.1,} Typed characters are spoken (echoed).
+     
+Reading of the characters and cancelling the synthesis must be
+very fast, to catch up with a fast typist or even with
+autorepeat.  Consider a typical autorepeat rate 25 characters per
+second.  Ideally within each of the 40 ms intervals synthesis
+should begin, produce some audio output and stop.  To perform
+all these actions within 100 ms (considering a fast typist and
+some overhead of the application and the audio output) on a
+common hardware is very desirable.
+
+Appropriate character reading performance may be difficult to
+achieve with contemporary software speech synthesizers, so it may
+be necessary to use techniques like caching of the synthesized
+characters.  Also, it is necessary to ensure there is no initial
+pause ("breathing in") within the synthesized character.
+
+@para{A.5.2,} Moving over words or lines, each of them is spoken.
+
+The sound sample needn't be available as quickly as in case of the
+typed characters, but it still should be available without clearly
+noticeable delay.  As the user moves over the words or lines, he
+must hear the text immediately.  Cancelling the synthesis of the
+previous word or line must be instant.
+
+@para{A.5.3,} Reading longer messages
+
+The speech synthesizer driver must be able to process longer input
+texts in such a way that the audio output starts to be availabl as
+soon as possible.  An application must not be required to split long
+texts into smaller pieces.
+
+@para{A.5.4,} Reading a large text file.
+
+In such a case, it is not necessary to start speaking instantly,
+because reading a large text is not a very frequent operation.
+One second long delay at the start is acceptable, although not
+comfortable.  Cancelling the speech must still be instant.
+
+@end itemize
+
+@node Extended SSML Markup
+@appendix Extended SSML Markup
+@anchor{appendix-B}
+
+This section defines the set of extended SSML markup and special
+attribute values for use in input texts for the drivers.  The markup
+consists of two namespaces: 'SSML' (default) @ref{SSML} and 'tts',
+where 'tts' introduces several new attributes to be used with the
+'say-as' element and a new element 'style'.
+
+If an SSML element is supported, all its mandatory attributes by the
+definition of SSML 1.0 (@ref{SSML}) must be supported even if they are
+not explicitly mentioned in this document.
+
+This section also defines which functions the API
+needs to provide for default prosody, voice and style settings,
+according to @ref{A.3.2}.
+
+@note{According to available information, SSML is not known
+to suffer from any IP issues.}
+
+@itemize @w{}
+
+@para{B.1, @should} The following elements are supported
+@enumerate
+@item @code{speak}
+@item @code{voice}
+@item @code{prosody}
+@item @code{say-as}
+@end enumerate
+
+@para{B.1.1,} These SPEAK attributes are supported
+@enumerate
+@item @should{} @code{xml:lang}
+@end enumerate
+
+@para{B.1.2,} These VOICE attributes are supported
+@enumerate
+@item @should{} @code{xml:lang}
+@item @should{} @code{name}
+@item @niceto{} @code{gender}
+@item @niceto{} @code{age}
+@item @niceto{} @code{variant}
+@end enumerate
+
+@para{B.1.3,} These PROSODY attributes are supported
+@enumerate
+@item @should{} @code{pitch}  (with +/- %, "default")
+@item @should{} @code{rate}   (with +/- %, "default")
+@item @should{} @code{volume} (with +/- %, "default")
+@item @niceto{} @code{range}  (with +/- %, "default")
+@item @niceto{} @code{pitch}, @code{rate}, @code{range} 
+with absolute value parameters
+@end enumerate
+
+@note{The corresponding global relative prosody settings commands (not
+markup) in TTS API represent the percentage value as a percentage
+change with respect to the default value for the given voice and
+parameter, not with respect to previous settings.}
+
+
+@para{B.1.4,} The @code{say-as} attribute @code{interpret-as}
+is supported with the following values
+
+@enumerate
+@item @should{} characters
+The format @code{glyphs} is supported.
+
+@rationale{This provides capability for spelling.}
+
+@item @should{} @code{tts:char}
+
+Indicates the content of the element
+is a single character and it should be pronounced as a character.  The
+element's contents (CDATA) should only contain a single character.
+
+This is different from the interpret-as value @code{characters}
+described in @ref{B.1.3} While @code{characters} is intended
+for spelling words and sentences, @code{tts:char} means
+pronouncing the given character (which might be subject
+to different settings, as for example using sound icons to
+represent symbols).	
+
+If more than one character is present as the contents
+of the element, this is considered an error.
+
+@myexample{
+<speak>
+<say-as interpret-as="tts:char">@@</say-as>
+</speak>]
+}	
+
+@rationale{It is useful to have a separate attribute
+for "single characters" as this can be used in TTS
+configuration to distinguish the situation when
+the user is moving with cursor over characters
+from the situation of spelling. As well as in other
+situations where the concept of "single character"
+has some logical meaning.}
+		
+@item @should{} @code{tts:key}
+The content of the element should be interpreted
+as the name of a keyboard key or combination of keys. See
+section (C) for possible string values of content of this
+element. If a string is given which is not defined in section
+(C), the behavior of the synthesizer is undefined.
+
+@myexample{
+<speak>
+<say-as interpret-as="tts:char">shift_a</say-as>
+</speak>
+}
+
+@anchor{tts:digits}
+@item @niceto{} @code{tts:digits}
+Indicates the content of the element is a number.
+The attribute "detail" is supported and can take a numerical
+value, meaning how many digits should the synthesizer group
+for reading. The value of 0 means the number should be
+pronounced as a whole appropriate for the language, while any
+non-zero value means that a groups of so many digits should be
+formed for reading, starting from left.
+
+Example: The string "5431721838" would normally be read
+as "five billion four hundred thirty seven million ..." but
+when enclosed in the above say-as with detail set to 3, it
+would be read as "five hundred forty three, one hundred
+seventy two etc." or "five, four, three, seven etc." with
+detail 1.
+
+@note{This is an extension to SSML not defined in the
+format itself, introduced under the namespace 'tts' (as
+allowed	in SSML 'say-as' specifications).}
+@end enumerate
+
+@para{B.2, @niceto} The following elements are supported
+@enumerate
+@item @code{mark}
+@item @code{s}
+@item @code{p}
+@item @code{phoneme}
+@item @code{sub}
+@end enumerate
+
+@para{B.2.1., @niceto}
+These P attributes are supported:
+@enumerate
+@item @code{xml:lang}
+@end enumerate
+
+@para{B.2.2., @niceto}
+These S attributes are supported 
+@enumerate
+@item @code{xml:lang}
+@end enumerate
+
+@para{B.3., @should}
+An element `tts:style' (not defined in SSML 1.0) is supported.
+
+This element can occur anywhere inside the SSML document.
+It may contain all SSML elements except the element 'speak'
+and it may also contain the element 'tts:style'.
+
+It has two mandatory attributes 'field'
+and 'mode' and an optional string attribute 'detail'. The
+attribute 'field' can take the following values
+@enumerate
+@item @code{punctuation}
+@item @code{capital_letters}
+@end enumerate
+defined below.
+
+If the parameter field is set to 'punctuation',
+the 'mode' attribute can take the following values
+@enumerate
+@item @code{none}
+@item @code{all}
+@item @niceto{} @code{some}
+@end enumerate
+When set to 'none', no punctuation characters are explicitly
+indicated. When it is set to 'all', all punctuation characters
+in the text should be indicated by the synthesizer.  When
+set to 'some', the synthesizer will pronounce those
+punctuation characters enumerated in the additional attribute
+'detail' or will only speak those characters according to its
+settings if no 'detail' attribute is specified.
+
+The attribute detail takes the form of a string containing
+the punctuation characters to read.
+
+@myexample{
+<tts:style field="punctuation" mode="some" detail=".?!">
+}
+
+If the parameters field is set to 'capital_letters',
+the 'mode' attribute can take the following values
+@enumerate
+@item @code{no}
+@item @code{spelling}
+@item @niceto{} @code{icon}
+@item @niceto{} @code{pitch}
+@end enumerate
+
+When set to 'no', capital letters are not explicitly
+indicated. When set to 'spell', capital letters are
+spelled (e.g. "capital a"). When set to 'icon', a sound
+is inserted before the capital letter, possibly leaving
+the letter/word/sentence intact. When set to 'pitch',
+the capital letter is pronounced with a higher pitch,
+possibly leaving the letter/word/sentence intact.
+
+@rationale{These are basic capabilities well established
+in accessibility. However, SSML does not support them. 
+Introducing this additional element does not break the
+possibility of outside applications to send valid SSML
+into TTS API.}
+
+@para{B.4, @niceto}
+Support for the rest of elements and attributes
+defined in SSML 1.0. However, this is of lower priority than
+the enumerated subset above.
+
+@openissue{In many situations, it will be desirable to
+preserve whitespace characters in the incoming document.
+Should we require the application to use the 'xml:space'
+attribute for the speak element or should we state 'preserve'
+is the default value for 'xml:space' in the root 'speak'
+element in this case?}
+
+@end itemize
+
+@node Key Names
+@appendix Key Names
+@anchor{appendix-C}
+
+@menu
+* General Rules::               
+* List of symbolic key names::  
+@end menu
+
+@node General Rules
+@section General Rules
+Key name may contain any character excluding control characters (the
+characters in the range 0 to 31 in the ASCII table and other
+``invisible'' characters), spaces, dashes and underscores.
+
+The recognized key names are:
+@itemize
+@item
+Any single UTF-8 character, excluding the exceptions defined above.
+@item
+Any of the symbolic key names defined below.
+@item
+A combination of key names defined below using the @samp{_}
+(underscore) character for concatenation.
+@end itemize
+
+Examples of valid key names:
+@example
+A
+shift_a
+shift_A
+$
+enter
+shift_kp-enter
+control
+control_alt_delete
+@end example  
+
+@node List of symbolic key names
+@section List of symbolic key names
+
+@itemize @w{}
+@item Escaped keys
+
+@itemize
+@table @code
+@item space
+@item underscore
+@item dash
+@end table
+@end itemize
+
+@item Auxiliary Keys
+
+@itemize
+@table @code
+@item alt
+@item control
+@item hyper
+@item meta
+@item shift
+@item super
+@end table
+@end itemize
+
+@item Control Character Keys
+
+@itemize
+@table @code
+@item backspace
+@item break
+@item delete
+@item down
+@item end
+@item enter
+@item escape
+@item f1
+@item f2 ... f24
+@item home
+@item insert
+@item kp-*
+@item kp-+
+@item kp--
+@item kp-.
+@item kp-/
+@item kp-0 
+@item kp-1 ... kp-9
+@item kp-2
+@item kp-enter
+@item left
+@item menu
+@item next
+@item num-lock
+@item pause
+@item print
+@item prior
+@item return
+@item right
+@item scroll-lock
+@item space
+@item tab
+@item up
+@item window
+@end table
+@end itemize
+@end itemize
+
+@node Requirements on the synthesizers
+@appendix Requirements on the synthesizers
+
+This section gives guidelines to the synthesizer authors and
+driver implementators about what capabilities should be supported
+by the synthesizers accessible under this API.
+
+The requirements are sorted into three categories: @must{}, @should{},
+@niceto with meaning analogical to that specified in @pref{appendix-A}.
+A synthesizer which does not fit all of the @must{} requirements
+cannot be accessed under this interface.
+
+@enumerate
+
+@item General points
+
+@enumerate
+@item @must
+Interaction with the synthesizer must not cause inapropriate blocking
+of system resources or affect other operating system components in an
+unexpected way. Especially, the synthesizer must not block audio
+output for other applications.
+@end enumerate
+
+@item Discovery of available voices
+
+@enumerate
+@item @niceto
+It would be nice if it was possible to discover all available voices.
+@item @niceto
+It would be nice to have the possibility of discovering languages
+and possibly also countries or dialects supported by each voice.
+@end enumerate
+
+@item Synthesizer configuration requirements
+
+@enumerate
+@item
+The synthesizer should (would be nice to if) support configuration
+options as defined in the interface description under @pref{Parameter
+Settings}. The relevant priorities for these capabilities are
+specified as points A.3.1-A.3.3, A.3.5 of the requirements on the API
+@pref{appendix-A} and in the extended SSML subset in use
+specifications @pref{appendix-B}.
+@end enumerate
+
+@item Synthesis process requirements
+
+@enumerate
+@item @must
+The synthesizer must be able to process plain text as input.
+
+@item @niceto
+If the synthesizer can't process UTF-8 encoding for the text, it would
+be nice if possible to determine the encoding used for a given voice
+and language.
+
+@item @should
+The synthesizer should be able to process text formatted using
+extended SSML markup defined in (@pxref{appendix-B}) of this document
+and encoded in UTF-8.  The synthesizer may choose to ignore markup it
+cannot handle or even to ignore all markup as long as it is able to
+process the text inside the markup.
+
+@item @should
+The speech synthesizer should be able to properly process the extended
+SSML markup defined in the (@pxref{appendix-B}). of this document as SHOULD
+HAVE. Analogically for NICE TO HAVE.
+
+@item @niceto
+It would be nice if the synthesizer was able to start the synthesis
+process from a position in the text where an event (word or sentence boundary)
+occurs, as described in @pref{say_text()}.
+
+@item @niceto
+It would be nice if the synthesizer supported the @pref{defer()}
+capability or a similar compatible mechanism how to achieve good
+performance when rewinding and pausing/resuming inside long texts.
+
+@item @must
+An application must be able to cancel a synthesis
+operation in progress.  In case of hardware synthesizers, or
+synthesizers that produce their own audio, this means cancelling
+the audio output as well.
+
+@item @must
+If the synthesized audio is being played, it must be possible
+to discover when the playback started and when it terminated.
+@end enumerate
+
+@item Audio retrieval
+
+@enumerate
+@item @niceto
+It would be nice if the synthesizer could retrieve audio data rather
+than play them itself. Preferably through the mechanism described in
+the interface definition @pref{Audio Retrieval}.
+@end enumerate
+
+@item Performance guidelines
+
+@enumerate
+@item @should
+The speech synthesizer driver should honor the
+Performance Guidelines described in @pref{appendix-A}.
+
+@item @niceto
+It would be nice if the synthesizer was able to
+process long input texts in such a way that the audio output
+starts to be available for playing as soon as possible.  The
+driver is not required to split long texts into smaller
+pieces.
+@end enumerate
+
+@item Other requirements
+
+@enumerate
+@item @niceto
+It would be nice if a synthesizer were able to support multilingual
+utterances.
+
+@item @niceto
+It would be nice if the synthesizer supported notification of 
+events and custom index marks as defined in @pref{EventType}
+and if the application was able to align these events with the synthesized
+audio as in @pref{Audio Retrieval}
+
+@rationale{This is useful to update cursor position as a displayed
+text is spoken. It is also essential for rewinding and context pause
+capabilities.}
+@end enumerate
+@end enumerate
+
+@node Related Specifications
+@appendix Related Specifications
+@anchor{bibliography}
+
+@enumerate
+
+@bibitem{SSML, Speech Synthesis Markup Language, , W3C, http://www.w3.org/TR/2004/REC-speech-synthesis-20040907/}
+
+@bibitem{SSML-req, SSML Requirements, , W3C, http:/www.w3.org/TR/2004/REC-speech-synthesis-20040907ref-reqs}
+
+@bibitem{SSML-say-as, SSML 'say-as' Element Attribute Values, ,W3C, http://www.w3.org/TR/2005/NOTE-ssml-sayas-20050526/}
+
+@bibitem{MRCP, MRCP, , ,http://www.ietf.org/html.charters/speechsc-charter.html}
+@end enumerate
+
+
+@bye

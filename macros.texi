@@ -1,0 +1,106 @@
+@ifnottex
+    @c Macros for document marking
+@macro rationale{text} Rationale: \text\
+@end macro
+
+@macro note{text} Note: \text\
+@end macro
+
+@macro temporary{text} Temporary@w{ }Note: \text\
+@end macro
+
+@macro openissue{text} Open@w{ }Issue: \text\
+@end macro
+
+@macro proposal{text} Proposal: \text\
+@end macro
+
+    @c Macros with names of projects
+@macro dispatcher{} Speech@w{}Dispatcher
+@end macro
+@macro gnomespeech{} Gnome@w{}Speech
+@end macro
+@macro kttsd{} KTTS
+@end macro
+
+    @c MUST HAVE, ..., OUT OF SCOPE, REMOVED etc.
+@macro must{} (MUST@w{ }HAVE):
+@end macro
+
+@macro should{} (SHOULD@w{ }HAVE):
+@end macro
+
+@macro niceto{} (NICE@w{ }TO@w{ }HAVE):
+@end macro
+
+@macro outofscope{} (OUT@w{ }OF@w{ }SCOPE):
+@end macro
+
+@macro removed{detail} (REMOVED: \detail\)
+@end macro
+
+@c Parts, sections, paragraphs
+@macro part{letter, name}
+@node \name\
+@appendix \name\
+@anchor{part-\letter\}
+@end macro
+
+@macro sect{number, name}
+@node \name\
+@section \name\
+@anchor{section-\number\}
+@end macro
+
+@macro para{number, status}
+@item \number\ \status\
+@anchor{\number\}
+@end macro
+
+    @c Example, ...
+@macro myexample{text}
+Example:
+@example
+\text\
+@end example
+@end macro
+
+@macro mycexample{text}
+Example:
+@example
+\text\
+@end example
+@end macro
+
+@macro pref{ref}
+(@ref{\ref\})
+@end macro
+
+@macro fperror
+In case of an error, the value @code{NULL} is returned and
+the variable @code{ERR} is set appropriately.
+@end macro
+
+@macro fierror
+In case of an error, the value @code{-1} is returned and
+the variable @code{ERR} is set appropriately.
+@end macro
+
+@macro fireturn
+On success, the value @code{0} is returned.
+@fierror
+@end macro
+
+@macro arg{text}
+@var{\text\}
+@end macro
+
+@macro func{text}
+@code{\text\}
+@end macro
+
+@macro comment{text}
+@emph{\text\}
+@end macro
+
+@end ifnottex
