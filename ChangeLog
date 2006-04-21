@@ -1,4 +1,6 @@
 2006-04-21  Hynek Hanke  <hanke@chopin>
 
+	* tts-api.texi (Requirements on the API): Typo.
+
 	* gen-doc.sh: Use texi2dvi instead of TeX.
 
