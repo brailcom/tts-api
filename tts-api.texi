@@ -1611,7 +1611,7 @@ previous word or line must be instant.
 @para{A.5.3,} Reading longer messages
 
 The speech synthesizer driver must be able to process longer input
-texts in such a way that the audio output starts to be availabl as
+texts in such a way that the audio output starts to be available as
 soon as possible.  An application must not be required to split long
 texts into smaller pieces.
 
