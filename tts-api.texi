@@ -1263,13 +1263,13 @@ in better performance.
 
 @heading Repeat, rewind, context pause
 
-The rewind and context pause functionality can be implemented in applications for
-every syntesizer that supports some kind of event notification for
-plain text messages. For SSML messages, support for the variable
-position start inside the message, as described in @pref{say_text()}
-is needed. The least granularity for rewind and context pause is
-determined by the granularity with which the synthesizer supports
-events notification.
+The rewind and context pause functionality can be implemented in
+applications for every syntesizer that supports some kind of event
+notification for plain text messages. For SSML messages, support for
+the variable position start inside the message, as described in
+@pref{say_text()} is needed. The least granularity for rewind and
+context pause is determined by the granularity with which the
+synthesizer supports events notification.
 
 Rewind can work as follows: The event notification mechanism is used to
 determine the current position in the spoken text. The message is first
