@@ -1973,7 +1973,6 @@ The requirements are sorted into three categories: @must{}, @should{},
 @niceto with meaning analogical to that specified in @pref{appendix-A}.
 A synthesizer which does not fit all of the @must{} requirements
 cannot be accessed under this interface.
-
 @enumerate
 
 @item General points
