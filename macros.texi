@@ -77,13 +77,12 @@ Example:
 @end macro
 
 @macro fperror
-In case of an error, the value @code{NULL} is returned and
-the variable @code{ERR} is set appropriately.
+In case of an error, the value @code{NULL} is returned..
 @end macro
 
 @macro fierror
-In case of an error, the value @code{-1} is returned and
-the variable @code{ERR} is set appropriately.
+In case of an error, the value @code{-1} is returned.  When this
+function is not supported by the driver, @code{-2} is returned.
 @end macro
 
 @macro fireturn

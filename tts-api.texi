@@ -1,7 +1,7 @@
     \input texinfo   @c -*-texinfo-*-
 @c %**start of header
 @setfilename tts-api.info
-@settitle Common TTS API
+@settitle Common Text-to-Speech API (draft, 28.4.2006)
 @finalout
 @c @setchapternewpage odd
 @c %**end of header
@@ -25,12 +25,6 @@ derived from this document without specific prior written permission.
 
 @c @set version 2006-03-09
 
-
-@c Index merging
-@syncodeindex pg cp
-@syncodeindex fn cp
-@syncodeindex vr cp
-
 @c Directory, keywords
 @dircategory Sound
 @dircategory Development
@@ -42,13 +36,13 @@ derived from this document without specific prior written permission.
 
 @c Title page for printed version
 @titlepage
-@title Common TTS Application Interface
-@c    Document version: @VERSION
+@title Common Text-to-Speech API (draft, 28.4.2006)
 
 @author Hynek Hanke, Brailcom <@email{hanke@@brailcom.org}>
 @author Milan Zamazal, Brailcom <@email{zamazal@@brailcom.org}>
-@author Olaf Jan Schmidt, KDE <@email{ojschmidt@@kde.org}> 
 @author Willie Walker, GNOME, Sun Microsystems <@email{willie.walker@@sun.com}>
+@author Olaf Jan Schmidt, KDE <@email{ojschmidt@@kde.org}> 
+@author Gary Cramblitt, KDE <@email{garycramblitt@@comcast.net}> 
 
 @page
 @vskip 0pt plus 1filll
@@ -72,6 +66,7 @@ derived from this document without specific prior written permission.
 * Key Names::                   
 * Requirements on the synthesizers::  
 * Related Specifications::      
+* Index of Functions::          
 @end menu
 
 @node Introduction
@@ -129,7 +124,7 @@ comments focused and to the point.}
 
 This section defines the low-level TTS interface for use by
 all assistive technologies on free software platforms.
-
+x
 @menu
 * General Points::              
 * Speech Synthesis Driver Discovery::  
@@ -151,25 +146,70 @@ The definition of this interface is not meant to imply that the final
 interface will be provided by C library calls. C syntax is only used
 for convenience.
 
+@itemize
+@item
+The general design of the API must be respected in every
+implementation of it. Regardless of language of implementation, the
+full set of functions defined here must be available.
+@item
+
+@item
+Function definitions (return value, arguments) must be respected.
+
+@item
+Data types must be respected in their meaning and possible values.
+
+@item
+The names of functions, data types and the names of the values for
+enumeration and set data types should be the same as given here,
+except for writing them in the form most appropriate for the language
+in use and prepending/appending them with namespace identifiers, class
+names etc.
+
+@item
+This API definition uses numerical values as error return values of
+functions. A given implementation might choose a better mechanism
+for reporting errors, appropriate for the language or mechanism
+of comunication in use (for example exceptions, three digits error
+codes for a TCP protocol etc).
+
+@item
+Where this API speaks about callbacks, other means of asynchronous
+notification can be used. (Such as asynchronous messages for a TCP
+protocol.)
+
+@end itemize
+
 @item
 The interface is designed such that both a simple library interface
 and a serialized language independent character based protocol for use
 over sockets and pipes can be provided.
 
 @item
-This interface is meant to be provided by a simple process
+This interface is meant to be provided by a simple library or process
 running the various synthesis drivers and emulating MUST HAVE
 functionality where possible and needed. It can also try to emulate
 some of the SHOULD HAVE and NICE TO HAVE capabilities at implementor's
 discretion.
 
 @item
-The interface between this library/process and the synthesis drivers
+The interface between this library or process and the synthesis drivers
 themselves, hardware or software, will be a subset of this interface.
 
 @item
-The interface definition uses the type @code{bool} not present in C
+The interface definition uses the type @code{bool_t} not present in C
 for variables whose value can be either @code{TRUE} or @code{FALSE}.
+
+@item
+When a string value containing characters not present in the ASCII
+table (namely various language specific characters), the data type
+used in this interface is @code{wchar_t} and the corresponding
+expected format for Unicode is UTF-32. When a string is marked as of
+type @code{char*}, it can't contain any wide characters. Only when the
+implementation of the interface (for example TCP protocol) does not
+allow for different types, UTF-8 encoding and wide characters is to be
+used for values marked as @code{wchar_t} in this definition.
+
 @end itemize
 
 @node Speech Synthesis Driver Discovery
@@ -179,91 +219,152 @@ This section deals with the discovery of the synthesis drivers
 available behind this interface. It also covers discovery of the
 capabilities and voices provided by the drivers.
 
-@anchor{DriverCapabilities}
-@deftp {Variable Type} DriverCapabilities
+@anchor{driver_capabilities_t}
+@deftp {Variable Type} driver_capabilities_t
     
-@code{DriverCapabilities} is a structure data type intended for
+@code{driver_capabilities_t} is a structure data type intended for
 carrying information about driver capabilities.
 
 @verbatim
-typedef struct{
-
+typedef struct {
     /* Voice discovery */ 
-    bool can_list_voices;
-    bool can_set_voice_by_properties;
+    bool_t can_list_voices;
+    bool_t can_set_voice_by_properties;
+    bool_t can_get_current_voice;
     
     /* Prosody parameters */
-    bool can_set_voice_rate_relative;
-    bool can_set_voice_rate_absolute;
-    bool can_get_voice_rate_default;
+    bool_t can_set_rate_relative;
+    bool_t can_set_rate_absolute;
+    bool_t can_get_rate_default;
 
-    bool can_set_voice_pitch_relative;
-    bool can_set_voice_pitch_absolute;
-    bool can_get_voice_pitch_default;
+    bool_t can_set_pitch_relative;
+    bool_t can_set_pitch_absolute;
+    bool_t can_get_pitch_default;
 
-    bool can_set_voice_pitch_range_relative;
-    bool can_set_voice_pitch_range_absolute;
-    bool can_get_voice_pitch_range_default;
+    bool_t can_set_pitch_range_relative;
+    bool_t can_set_pitch_range_absolute;
+    bool_t can_get_pitch_range_default;
 
-    bool can_set_voice_volume_relative;
-    bool can_set_voice_volume_absolute;
-    bool can_get_voice_volume_default;
+    bool_t can_set_volume_relative;
+    bool_t can_set_volume_absolute;
+    bool_t can_get_volume_default;
 
     /* Style parameters */
-    PunctuationMode punctuation_modes;
-    bool can_set_punctuation_detail;
+    bool_t can_set_punctuation_mode_all;
+    bool_t can_set_punctuation_mode_none;
+    bool_t can_set_punctuation_mode_some;
+    bool_t can_set_punctuation_detail;
 
-    CapitalLettersMode capital_letters_modes;
+    bool_t can_set_capital_letters_mode_spelling;
+    bool_t can_set_capital_letters_mode_icon;
+    bool_t can_set_capital_letters_mode_pitch;
 
-    bool can_set_number_grouping;
+    bool_t can_set_number_grouping;
 
     /* Synthesis */
-    bool can_say_text_from_position;
-    bool can_say_char;
-    bool can_say_key;
-    bool can_say_icon;
+    bool_t can_say_text_from_position;
+    bool_t can_say_char;
+    bool_t can_say_key;
+    bool_t can_say_icon;
 
     /* Dictionaries */
-    bool can_set_dictionary;
+    bool_t can_set_dictionary;
 
     /* Audio playback/retrieval */
-    OutputMethod output_methods;
-    AudioRetrievalMethod audio_retrieval_method;
+    bool_t can_retrieve_audio;
+    bool_t can_play_audio;
     
     /* Events and index marking */
-    bool can_report_message_events;
-    bool can_report_events_by_sentences;
-    bool can_report_events_by_words;
-    bool can_report_custom_index_marks;
+    bool_t can_report_events_by_sentences;
+    bool_t can_report_events_by_words;
+    bool_t can_report_custom_index_marks;
 
     /* Performance guidelines */
-    bool honors_performance_guidelines;
+    int honors_performance_guidelines;
 
     /* Defering messages */
-    bool can_defer_message;
+    bool_t can_defer_message;
 
     /* SSML Support */
-    bool can_parse_ssml;
+    bool_t can_parse_ssml;
 
     /* Multilingual utterences */ 
-    bool supports_multilingual_utterances;
-}DriverCapabilities;
+    bool_t supports_multilingual_utterances;
+} driver_capabilities_t;
 @end verbatim
+
+@var{can_set_rate_*}, @var{can_set_pitch_*},
+@var{can_set_pitch_range_*} and @var{can_set_volume_*} variables
+indicate whether the corresponding prosody parameter setting commands
+are supported. See @pref{Prosody Parameters}.
+
+@var{can_set_punctuation_mode*}
+variables indicate which parameters
+are supported for @func{set_punctuation_mode()}. See
+@pref{set_punctuation_mode()}.
+
+@var{can_set_puncuation_detail*} variables
+indicates whether @func{set_punctuation_detail()}
+is supported. See @pref{set_punctuation_detail()}.
+
+@var{can_set_capital_letters_mode_*} variables indicates
+which parameters are supported for @func{set_capital_letters_mode()}.
+See @pref{set_capital_letters_mode()}.
+
+@var{can_set_number_grouping} indicates whether the function
+@func{set_number_grouping} is supported. See @pref{set_number_grouping()}.
+
+@var{can_say_text_from_position} variable indicates whether
+the the capability to start synthesis at a given position in
+the text is supported, as described in @pref{say_text()}.
+
+Other @var{can_say_*} variables indicate whether the corresponging
+@code{say_} synthesis command is supported. See @pref{Speech Synthesis
+Commands}.
+
+@var{can_set_dictionary} indicates whether the function
+@func{set_dictionary()} is supported.
+
+@var{can_play_audio} and @var{can_retrieve_audio} variables indicate
+whether the corresponding audio output methos are allowed
+for @func{set_audio_output}. See @pref{Audio Retrieval}.
+
+@var{can_report_*} variables indicate which kind of audio events
+and index marks are supported. See @pref{Event Callbacks}.
+
+@var{honors_performance_guidelines} variable is @code{0} if
+performance guidelines are not honored, @code{1} if performance
+guidelines are honored on the @should level and @code{2}
+if performance guidelines are honored on the @niceto level.
+
+@var{can_defer} indicates whether the defer capability is
+supported. If this variable is true, @func{defer()}
+and @func{say_defered} must be supported. See @pref{defer()},
+@pref{say_defered()}.
+
+@var{can_parse_ssml} indicates whether the synthesizer is
+able to parse SSML. It doesn't indicate which SSML elements
+and attributes are supported.
+
+@var{supports_multilingual_utterances} indicates whether the
+synthesizer supports multilingual utterances (utterances containing
+multiple languages).
+
 @end deftp
 
-@deftp {Variable Type} DriverDescription
-@anchor{DriverDescription}
+@deftp {Variable Type} driver_description_t
+@anchor{driver_description_t}
 
-@code{DriverDescription} is a structure containing information
+@code{driver_description_t} is a structure containing information
 about a single driver.
 
 @verbatim
-typedef struct{
+typedef struct {
     char*           driver_id;
     char*           driver_version;
     char*           synthesizer_name;
     char*           synthesizer_version;
-}DriverDescription;
+} driver_description_t;
 @end verbatim
 
 @var{synthesizer_id} is the identification string of the driver.
@@ -284,7 +385,7 @@ where @code{major} is the major version number for the driver and
 
 @var{driver_capabilities} contains information about the support
 of the driver for functions and features defined in this interface.
-See (@ref{DriverCapabilities}) for a list of the available information.
+See (@ref{driver_capabilities_t}) for a list of the available information.
 
 @mycexample{
 driver_id = "festival"
@@ -294,57 +395,56 @@ driver_version = "1.2"
 }
 @end deftp
 
-@deftypefun DriverDescription* list_drivers (void)
+@deftypefun driver_description_t* list_drivers (void)
 @anchor{list_drivers()}
 
 @func{list_drivers()} returns a list of available synthesizer drivers.
-Each of the items in the list is of the type @code{DriverDescription},
-@pref{DriverDescription}, and must carry a properly filled in variable
+Each of the items in the list is of the type @code{driver_description_t},
+@pref{driver_description_t}, and must carry a properly filled in variable
 @var{driver_id}.
 
 @fperror
 @end deftypefun
 
-@deftypefun DriverCapabilities* driver_capabilities (char* driver_id)
+@deftypefun driver_capabilities_t* driver_capabilities (char* driver_id)
 @anchor{driver_capabilities()}
 
 @func{driver_capabilities} returns a information about the
-capabilities of the driver in a @code{DriverCapabilities} structure.
+capabilities of the driver in a @code{driver_capabilities_t} structure.
 
 Under this API, not each driver is guaranteed to support all of the
 functionality as defined in this document. It must however provide the
 full set of functions. Whether the functions will have the described
 effect can be discovered by examining the entries of the
-DriverCapabilities structure and comparing them with the documentation
+driver_capabilities_t structure and comparing them with the documentation
 for the given functions.
 
 @arg{driver_id} is the unique identification string for the
 synthesizer driver whose capabilities should be reported.  See
 @pref{list_drivers()}.
 
-This function returns a properly filled @code{DriverCapabilities}
+This function returns a properly filled @code{driver_capabilities_t}
 structure on success.
 @fperror
 @end deftypefun
 
-
 @node Voice Discovery
 @section Voice Discovery
 
-@deftp {Variable Type} VoiceDescription
-@anchor{VoiceDescription}
+@deftp {Variable Type} voice_description_t
+@anchor{voice_description_t}
 
-@code{VoiceDescription} is a structure containing the description
+@code{voice_description_t} is a structure containing the description
 of a voice.
 
 @verbatim
-typedef struct{
-    char *name;
+typedef struct {
+    wchar_t *name;
     char *language;
-    char *dialect;
+    wchar_t *dialect;
     VoiceGender gender;
     unsigned int age;
-}VoiceDescription;
+} voice_description_t;
 @end verbatim
 
 @var{name} is the name of the voice as recognized by the synthesizer.
@@ -366,7 +466,7 @@ of @code{0} means the age is unknown.
 
 @end deftp
 
-@deftypefun VoiceDescription* list_voices (char* driver_id)
+@deftypefun voice_description_t* list_voices (char* driver_id)
 @anchor{list_voices}
 
 @func{driver_list_voices} returns the available voices for
@@ -383,11 +483,11 @@ as returned by @func{list_drivers()} @pref{list_drivers()}.
 @section Speech Synthesis Commands
 
 Functions defined in this section generally accept a message to
-synthesize with driver, voice and other parameters
-according to the current settings at the time when the function is
-called. Several types of messages are handled by this API. It can be
-either a text message, containing plain text or SSML or any other markup,
-or it can be a 'key' or 'character' event or any general event.
+synthesize with driver, voice and other parameters according to the
+current settings at the time when the function is called. Several
+types of messages are handled by this API. It can be either a text
+message, containing plain text or SSML.  or it can be a 'key' or
+'character' event or any general event.
 
 The functions defined in this section can only block the calling
 process for as long as is necessary to fully receive and/or transfer
@@ -396,21 +496,21 @@ functions will not block the calling process for the time of synthesis
 of the message and audio output.
 
 The result of these commands will either be that the resulting audio
-stream is played on the speakers or that the audio stream is returned
-via the registered communication channel. Please see @ref{Audio
-Settings}.
+stream is played on the audio device or that the audio stream is
+returned via the registered communication channel. Please see
+@ref{Audio Settings}.
 
-@anchor{MessageFormat}
-@deftp {Variable Type} MessageFormat
+@anchor{message_format_t}
+@deftp {Variable Type} message_format_t
 
-@code{MessageFormat} is an enumeration type to indicate the type
+@code{message_format_t} is an enumeration type to indicate the type
 of the content of a message.
 
 @verbatim
-typedef enum{
+typedef enum {
     MESSAGE_TYPE_SSML,
     MESSAGE_TYPE_PLAIN
-}MessageFormat;
+} message_format_t;
 @end verbatim
 
 @code{MESSAGE_TYPE_SSML} means the content of the message is text
@@ -422,11 +522,11 @@ text.
 
 @end deftp
 
-@deftp {Variable Type} MessageID
-@anchor{MessageID}
+@anchor{message_id_t}
+@deftp {Variable Type} message_id_t
 
 @verbatim
-typedef signed int MessageID;
+typedef signed int message_id_t;
 @end verbatim
 
 A positive value represents the identification number of the message.  The
@@ -434,14 +534,14 @@ value of @code{0} means 'no message' and @code{-1} means an
 error ocurred.
 @end deftp
 
-@anchor{EventType}
-@deftp {Variable Type} EventType
+@anchor{event_type_t}
+@deftp {Variable Type} event_type_t
 
-@code{EventType} is used to describe the type of an event both in the
+@code{event_type_t} is used to describe the type of an event both in the
 original text and in the synthesized audio data.
 
 @verbatim
-typedef enum{
+typedef enum {
     EVENT_MESSAGE_BEGIN,
     EVENT_MESSAGE_END,    
     EVENT_SENTENCE_BEGIN,
@@ -449,7 +549,7 @@ typedef enum{
     EVENT_WORD_BEGIN,
     EVENT_WORD_END,
     EVENT_NONE
-}EventType;
+} event_type_t;
 @end verbatim
 
 @code{EVENT_MESSAGE_BEGIN} and @code{EVENT_MESSAGE_END} are events
@@ -463,12 +563,12 @@ corresponding to the begin and end of a word.
 @end deftp
 
 @anchor{say_text()}
-@deftypefun MessageID say_text (MessageFormat format, char* text, unsigned int position, EventType position_type)
+@deftypefun message_id_t say_text (message_format_t format, wchar_t* text, unsigned int position, event_type_t position_type)
 
 @func{say_text} accepts a text message to synthesize and starts synthesis
-on the given position.
+at the given position.
 
-@var{position} and @var{position_type} describes the position in the
+@var{position} and @var{position_type} describe the position in the
 message where synthesis should be started. @var{position} is a counter
 of events of type @var{position_type} from the beginning of the
 message. So for example the position @code{2} of event
@@ -486,7 +586,7 @@ according to users settings. If a validity check is performed and
 the text is found to be invalid, an error code is returned and the
 text is not processed further.
 
-@arg{format} is a format of the message according to @pref{MessageFormat}.
+@arg{format} is a format of the message according to @pref{message_format_t}.
 
 @arg{text} is the text to be synthesized in the form according to the
 value of the @var{format} argument.
@@ -500,7 +600,9 @@ and is conventionally set to @code{0}.
 @code{EVENT_SENTENCE_START}, @code{EVENT_SENTENCE_END},
 @code{EVENT_WORD_BEGIN} and @code{EVENT_WORD_END}.
 
-On success, a unique message ID is returned.
+On success, a unique message ID is returned 
+or 0 is returned (if the synthesizer does not support index
+marking nor defer()).
 @fierror
 
 For example calling say_text() with the following arguments
@@ -522,7 +624,7 @@ exactly the events are and rely on that guess if it did not receive
 the information from the synthesizer earlier.}
 @end deftypefun
 
-@deftypefun MessageID say_defered (MessageID message_id, signed int position_from, PositionType position_type)
+@deftypefun message_id_t say_defered (message_id_t message_id, signed int position_from, PositionType position_type)
 @anchor{say_defered()}
 
 @func{say_defered} works just like @func{say_text}, except it works on
@@ -530,20 +632,25 @@ messages which were previously defered. Please see @pref{defer()}.
 
 @arg{message_id} is the id of the message to synthesize, as obtained by
 @func{defer()}.
+
+On success, a unique message ID.
+@fierror
 @end deftypefun
 
-@deftypefun int say_key (char* key_name)
+@deftypefun message_id_t say_key (wchar_t* key_name)
 
 @func{say_key} accepts a key name to synthesize. The command is
 intended to be used for speaking keys pressed by the user.
 
 @arg{key_name} is a valid key name as defined in @ref{appendix-C}.
 
-On success, a unique message ID is returned.
+On success, a unique message ID is returned 
+or 0 is returned (if the synthesizer does not support index
+marking nor defer()).
 @fierror
 @end deftypefun
 
-@deftypefun MessageID say_char (char* char)
+@deftypefun message_id_t say_char (wchar_t* char)
 
 @func{say_char} accepts a letter (or syllable if the language doesn't
 have individual letters) to synthesize. The command is intended to be
@@ -552,15 +659,21 @@ moving the cursor over a word.
 
 @arg{char} is the character to synthesize.
 
+On success, a unique message ID is returned 
+or 0 is returned (if the synthesizer does not support index
+marking nor defer()).
 @fireturn
 @end deftypefun
 
-@deftypefun MessageID say_icon (char* icon)
+@deftypefun message_id_t say_icon (char* icon)
 
 @func{say_icon} accepts a general sound icon to synthesize.  The
 command is intended to be used for general events like `new-line',
 `message-arrived', `question' or `new-email' . The exact sound
 produced or text synthesized depends on user's configuration.
+
+@openissue{Should we specify a list of allowed icon names or should
+it be only names given by the user to the application?}
 
 If the icon name is not recognized by the synthesizer, the
 synthesizer tries to synthesize the name of the event itself.
@@ -568,14 +681,16 @@ synthesizer tries to synthesize the name of the event itself.
 @arg{icon} is the name of the icon to synthesize. It must not contain
 any whitespace characters.
 
-On success, a unique message ID is returned.
+On success, a unique message ID is returned 
+or 0 is returned (if the synthesizer does not support index
+marking nor defer()).
 @fierror
 @end deftypefun
 
 @node Speech Control Commands
 @section Speech Control Commands
 
-@deftypefun MessageID cancel (void)
+@deftypefun void cancel (void)
 
 @func{cancel} immediately stops synthesis and audio output of the
 current message. When this function returns, the audio output is fully
@@ -585,16 +700,14 @@ If this function is called during the transfer of audio data to the
 application, the data block currently being transfered is completed and
 no further data block is sent.
 
-On success, return value is the unique message ID of the message that
-was stopped.  Calling this command when no message is being processed is
-not considered an error and the return value is @code{0}, meaning 'no
-message'.
+Calling this command when no message is being processed is
+not considered an error.
 @fierror
 
 @end deftypefun
 
 @anchor{defer()}
-@deftypefun MessageID defer (void)
+@deftypefun message_id_t defer (void)
 
 @func{defer} is similar to @func{cancel} except after stopping the
 synthesis process and audio playback the message is not thrown away in
@@ -609,17 +722,17 @@ If this function is called during the transfer of audio data to the
 application, the data block currently being transfered is completed and
 no further data block is sent.
 
-If this function is called after all the audio has been already
+This function can also be called after all the audio has been already
 transfered to the application, but before another synthesis request is
 issued, with no cancel() request in between, the data for the previous
 message are stored.
 
 On success, a unique identifier for the message is returned. See
-@pref{MessageID}.
+@pref{message_id_t}.
 @fierror
 @end deftypefun
 
-@deftypefun int discard (MessageID message)
+@deftypefun int discard (message_id_t message)
 
 Discards a previously defered message. The driver/engine
 will drop all information about this message and the
@@ -662,9 +775,9 @@ as returned by list_drivers().
 @subsection Voice Selection
 
 Setting parameters in this section only has effect until the
-synthesizer is changed.
+synthesizer is changed by the application.
 
-@deftypefun int set_voice_by_name (char* voice_name)
+@deftypefun int set_voice_by_name (wchar_t* voice_name)
 
 @func{set_voice_by_name} selects the voice with the given name.
 
@@ -674,7 +787,7 @@ the names returned by @code{list_voices()}.  See @ref{list_voices}.
 @fireturn
 @end deftypefun
 
-@deftypefun int set_voice_by_properties (VoiceDescription *voice_description, unsigned int variant)
+@deftypefun int set_voice_by_properties (voice_description_t *voice_description, unsigned int variant)
 
 @func{set_voice_by_properties} selects a voice most closely matching
 the given description. The exact voice selected might be subject to
@@ -685,18 +798,18 @@ respected, although language generally is supposed to be respected,
 unless impossible or unless the user wishes otherwise.
 
 In case no voice matches the given language, the synthesizer should
-pick the general default voice (if aplicable) or to choose a voice at
-random. This alone is not considered an error and must not be a reason
-for the synthesizer to refuse further synthesis requests unless for
-some other related reason (as for example the voice being unable to
-handle the given UTF-8 character range).
+pick the general default voice (if aplicable) or to choose a voice an
+arbitrary voice. This alone is not considered an error and must not be
+a reason for the synthesizer to refuse further synthesis requests
+unless for some other related reason (as for example the voice being
+unable to handle the given UTF-8 character range).
 
 The application can check which voice was selected and how closely (if
 at all) it matches the given description.
 
 @arg{voice_description} is a description of the desired voice. Any of
 its entries can be filled in or left blank. Please see
-@ref{VoiceDescription} for more information about the format and
+@ref{voice_description_t} for more information about the format and
 allowed values.
 
 @arg{variant} is an unsigned number specifying which of the voices
@@ -708,7 +821,15 @@ following that with @code{set_voice_by_name} as user settings about
 voice selection inside the synthesizer are respected.}
 
 @fireturn
+@end deftypefun
 
+@deftypefun voice_description_t* get_current_voice (void)
+
+@func{get_current_voice} returns a @code{voice_description_t}
+structure filled in with all known information about the voice
+currently in use.
+
+@fperror
 @end deftypefun
 
 @node Prosody Parameters
@@ -717,9 +838,9 @@ voice selection inside the synthesizer are respected.}
 Setting parameters in this section only has effect until the
 synthesizer is changed.
 
-@deftypefun int set_prosody_rate_relative (signed int rate_relative)
-@deftypefunx int set_prosody_rate_absolute (unsigned int rate_absolute)
-@deftypefunx {unsigned int} get_prosody_rate_absolute_default (void)
+@deftypefun int set_rate_relative (signed int rate_relative)
+@deftypefunx int set_rate_absolute (unsigned int rate_absolute)
+@deftypefunx {unsigned int} get_rate_absolute_default (void)
 
 Set/get the rate of speech. 
 
@@ -733,9 +854,9 @@ percent lower rate with respect to the default.
 @fireturn
 @end deftypefun
 
-@deftypefun int set_prosody_pitch_relative (signed int pitch_relative)
-@deftypefunx int set_prosody_pitch_absolute (unsigned int pitch_absolute)
-@deftypefunx {unsigned int} get_prosody_pitch_absolute_default (void)
+@deftypefun int set_pitch_relative (signed int pitch_relative)
+@deftypefunx int set_pitch_absolute (unsigned int pitch_absolute)
+@deftypefunx {unsigned int} get_pitch_absolute_default (void)
 
 Set/get the voice base pitch.
 
@@ -749,7 +870,7 @@ pitch with respect to the default.
 @fireturn
 @end deftypefun
 
-@deftypefun int set_prosody_pitch_range_relative (signed int range)
+@deftypefun int set_pitch_range_relative (signed int range)
 
 Set voice pitch range in relative units. Pitch range is how much pitch
 changes in intonation with respect to the base pitch.
@@ -760,16 +881,16 @@ value for the given voice while @code{-50} means a fifty percent lower
 pitch range with respect to the default.
 @end deftypefun
 
-@deftypefun int set_prosody_pitch_range_absolute (unsigned int range)
+@deftypefun int set_pitch_range_absolute (unsigned int range)
 
 @openissue{How should this work? It is not clear from the SSML specs.} 
 
 @fireturn
 @end deftypefun
 
-@deftypefun int set_prosody_volume_relative (signed int volume_relative)
-@deftypefunx int set_prosody_volume_absolute (unsigned int volume_absolute)
-@deftypefunx {unsigned int} get_prosody_volume_absolute_default ()
+@deftypefun int set_volume_relative (signed int volume_relative)
+@deftypefunx int set_volume_absolute (unsigned int volume_absolute)
+@deftypefunx {unsigned int} get_volume_absolute_default ()
 
 Set/get the volume of speech.
 
@@ -788,33 +909,33 @@ maximum volume.
 @node Style Parameters
 @subsection Style parameters
 
-@deftp {Variable Type} PunctuationMode
-@anchor{PunctuationMode}
+@deftp {Variable Type} punctuation_mode_t
+@anchor{punctuation_mode_t}
 
-@code{PunctuationMode} is an enumerate variable type containing
+@code{punctuation_mode_t} is an enumerate variable type containing
 information about punctuation signalization mode.
 
 @verbatim
-typedef enum{
+typedef enum {
     PUNCTUATION_NONE,
     PUNCTUATION_ALL,
     PUNCTUATION_SOME
-}PunctuationMode;
+} punctuation_mode_t;
 @end verbatim
 
-@code{PUNCTUATION_NONE} means no punctuation is signaled.
+@code{PUNCTUATION_NONE} means no punctuation is signalled.
 
-@code{PUNCTUATION_ALL} means all punctuation characters are signaled.
+@code{PUNCTUATION_ALL} means all punctuation characters are signalled.
 
 @code{PUNCTUATION_SOME} means only selected punctuation characters
-are signaled. (See @ref{set_style_punctuation_detail}).
+are signalled. (See @ref{set_punctuation_detail()}).
 @end deftp
 
-@deftypefun int set_style_punctuation (PunctuationMode mode)
-@anchor{set_style_punctuation}
+@deftypefun int set_punctuation_mode (punctuation_mode_t mode)
+@anchor{set_punctuation_mode()}
 
 Set punctuation reading mode. In other words, this influences which
-punctuation characters will be signaled while reading the text.
+punctuation characters will be signalled while reading the text.
 Signalling means either synthesizing their name (e.g. `qustion mark')
 or playing the appropriate sound icon, according to user settings
 inside the synthesizer.
@@ -826,40 +947,40 @@ program source code, it is desirable to have them spoken or otherwise
 indicated.
 
 @arg{mode} is one of @code{PUNCTUATION_NONE}, @code{PUNCTUATION_ALL}
-and @code{PUNCTUATION_SOME} (See @ref{set_style_punctuation_detail})
-as defined in @ref{PunctuationMode}.
+and @code{PUNCTUATION_SOME} (See @ref{set_punctuation_detail()})
+as defined in @ref{punctuation_mode_t}.
 
 @fireturn
 @end deftypefun
 
-@deftypefun int set_style_punctuation_detail (char *detail)
-@anchor{set_style_punctuation_detail}
+@anchor{set_punctuation_detail()}
+@deftypefun int set_punctuation_detail (w_char *detail)
 
-@func{set_style_punctuation_detail} influences which punctuation
-characters should be signaled when the punctuation mode is
-set to @code{PUNCTUATION_SOME} (See @ref{set_style_punctuation})
+@func{set_punctuation_detail} influences which punctuation
+characters should be signalled when the punctuation mode is
+set to @code{PUNCTUATION_SOME} (See @ref{set_punctuation_mode()})
 
 @arg{detail} is a string enumerating the punctuation characters
-that should be signaled without any spaces.
+that should be signalled without any spaces.
 
 @myexample{
-    set_style_punctuation_detail("?!.#");
+    set_punctuation_detail("?!.#");
 }
 @end deftypefun
 
-@deftp {Variable Type} CapitalLettersMode
-@anchor{CapitalLettersMode}
+@deftp {Variable Type} capital_letters_mode_t
+@anchor{capital_letters_mode_t}
 
-@code{CapitalLettersMode} is an enumerate variable type containing
+@code{capital_letters_mode_t} is an enumerate variable type containing
 information about selected mode for signalling capital letters.
 
 @verbatim
-typedef enum{
+typedef enum {
     CAPITAL_LETTERS_NO,
     CAPITAL_LETTERS_SPELLING,
     CAPITAL_LETTERS_ICON,
     CAPITAL_LETTERS_PITCH,
-}PunctuationMode;
+} capital_letters_mode_t;
 @end verbatim
 
 @code{CAPITAL_LETTERS_NO} means no signalling of capital letters.
@@ -889,9 +1010,10 @@ indicated by raising pitch of the voice when reading them.
 @openissue{How exactly does @code{CAPITAL_LETTERS_PITCH} work?}
 @end deftp
 
-@deftypefun int set_style_capital_letters (CapitalLettersMode mode)
+@anchor{set_capital_letters_mode()}
+@deftypefun int set_capital_letters_mode (capital_letters_mode_t mode)
 
-@func{set_style_capital_letters} sets the capital letters speaking
+@func{set_capital_letters_mode} sets the capital letters speaking
 mode as requested.
 
 When the engine is not able to set the requested mode, but
@@ -899,12 +1021,14 @@ it is able to set some other mode, this should be done.
 
 @arg{mode} is one of @code{CAPITAL_LETTERS_NO},
 @code{CAPITAL_LETTERS_SPELLING}, @code{CAPITAL_LETTERS_ICON} and
-@code{CAPITAL_LETTERS_PITCH} as defined in @ref{CapitalLettersMode}.
+@code{CAPITAL_LETTERS_PITCH} as defined in
+@ref{capital_letters_mode_t}.
 
 @fireturn
 @end deftypefun
 
-@deftypefun int set_style_number_grouping (unsigned int grouping)
+@anchor{set_number_grouping()}
+@deftypefun int set_number_grouping (unsigned int grouping)
 
 Sets how many digits should be grouped together when reading
 a number. See @ref{tts:digits} for a detailed description of the
@@ -930,13 +1054,13 @@ as a whole.
 @subsection Audio Settings
 
 Generally, there are two ways of dealing with audio. Either the
-application can ask over this API to get the synthesized audio samples
-as data or it can ask for it to be played (on computer speakers or the
-internal speakers of hardware devices). Of course not for every
-synthesizer are both options available.
+application can ask this API to send the synthesized audio samples as
+data or it can ask for it to be played (e.g. on computer audio device or
+the internal speakers of hardware devices). Of course both the options
+are not available in every synthesizer.
 
 In the case where the application asks for the audio to be played on the
-speakers, the means of handling audio events and index marking will be
+audio device, the means of handling audio events and index marking will be
 callbacks (handled either as function callbacks or asynchronous socket
 notifications). This way, event signalling and/or index marking
 callbacks can be provided by every synthesizer which supports
@@ -954,17 +1078,16 @@ can give audio data to its driver.
 Of course it is possible to discover the capabilities of each driver
 in advance. See @pref{Speech Synthesis Driver Discovery}.
 
-@deftp {Variable Type} OutputMethod
-
-@anchor{OutputMethod}
-@code{OutputMethod} is an enumerated variable type
+@anchor{output_method_t}
+@deftp {Data Type} output_method_t
+@code{output_method_t} is an enumerated variable type
 for selecting the audio output method for the synthesizer.
 
 @verbatim
-typedef enum{
-    OUTPUT_AUDIO_PLAYBACK,
-    OUTPUT_AUDIO_RETRIEVAL,
-}AudioRetrievalMethod;
+typedef enum {
+    AUDIO_OUTPUT_PLAYBACK,
+    AUDIO_OUTPUT_RETRIEVAL,
+} audio_output_method_t;
 @end verbatim
 
 @code{OUTPUT_AUDIO_PLAYBACK} means the audio should be
@@ -974,8 +1097,8 @@ played on the synthesizer or automatically sent to playback.
 returned to the application from the synthesizer.
 @end deftp
 
-@anchor{set_output}
-@deftypefun int set_output (OutputMethod method)
+@anchor{set_audio_output()}
+@deftypefun int set_audio_output (output_method_t method)
 
 This option deals with the output of the synthesizer.
 The two possibilities are to have the audio played (which
@@ -983,8 +1106,8 @@ is the only possibility for some synthesizers) or have
 audio retrieved over a socket as a series of data blocks
 (either synchronously or asynchronously).
 
-@arg{method} is either @code{OUTPUT_AUDIO_PLAYBACK} or
-@code{OUTPUT_AUDIO_RETRIEVAL}. See @pref{OutputMethod}.
+@arg{method} is either @code{AUDIO_OUTPUT_PLAYBACK} or
+@code{AUDIO_OUTPUT_RETRIEVAL}. See @pref{output_method_t}.
 
 @fireturn
 @end deftypefun
@@ -1011,7 +1134,7 @@ This section deals with the situation when the application wants to
 retrieve audio data from the synthesizer as described in @pref{Audio
 Settings}.
 
-The audio data are delivered over a TCP socket on the
+The audio data are delivered to a TCP socket on the
 address specified by the application using
 @code{set_audio_retrieval_destination()}. 
 
@@ -1037,7 +1160,7 @@ The following syntax is used for each block:
 @code{bitrate}=@var{bitrate}
 @code{sample_rate}=@var{sample_rate}
 @code{channels}=@var{channels}
-@code{architecture}=@var{architecture_string}
+@code{encoding}=@var{architecture_string}
 @code{END OF PARAMETERS}
 @code{EVENTS}
 @var{type}    @var{text_position}       @var{time_position}
@@ -1076,22 +1199,23 @@ This parameter is required.
 
 @var{audio_length} is an unsigned string-represented number indicating
 the length of the audio data contained in the @code{DATA} section
-in miliseconds.
-This parameter is required.
+in miliseconds. This parameter is required.
 
-@var{bitrate}, @var{sample_rate} and @var{channels} are only used for
+@code{bitrate}, @var{sample_rate} and @var{channels} are only used for
 the ``raw'' data format and they are string-represented numbers
-describing the three common audio parameters.
+describing the three common audio parameters. @code{bitrate} gives
+number of bytes per sample, @var{sample_rate} is the sampling frequency
+in Hz and @var{channels} is the number of channels in the audio data.
 
 @var{architecture} is a string describing the architecture details
 of the sender machine relating to the audio data sent. This parameter
 is only used for the ``raw'' audio output. It has the following usual form: 
 
 @example
-@var{signdness}@var{bits-per-word}_@var{endian}
+@var{signed/unsigned}_@var{bits-per-word}_@var{endian}
 @end example
 
-where @var{signdness} is either @code{S} or @code{U} for
+where @var{signed/unsigned} is either @code{S} or @code{U} for
 signed or unsigned data type, @var{bits-per-word} is a two
 digits number representing word data width and @var{endian}
 is either @code{LE} for little endian or @code{BE} for big
@@ -1112,7 +1236,7 @@ allways be signalled, though.
 @itemize
 
 @item
-Eeach line for the `message' event has the following form
+Each line for the `message' event has the following form
 
 @example
 message_start
@@ -1137,26 +1261,30 @@ Each line for a `sentence / word event' has the following form
 
 @var{n} is the number of the event starting from one.
 
-@var{pos_text} is the position of the event in the original text  represented in bytes.
+@var{pos_text} is the position of the event in the original text
+represented as number of characters.
 
-@openissue{The position in bytes is coding dependent. This protocol uses UTF-8,
-so the reported position must be with respect to UTF-8 encoded text, but the synthesizer
-or the application might use UTF-32. There is no easy way to convert the byte position
-as characters in UTF-8 are variable-width. Is this a problem?}
+@note{It is important @var{pos_text} is given in characters rather
+than bytes, as a value in bytes is encoding dependent. For example it
+is different for a text encoded in UTF-8 and the same text encoded in
+UTF-32 as in the first case, variable width encoding is being used.
+This way, it is also easy to deal with by synthesizers which do not
+support multibyte encodings.}
 
-@var{pos_audio} is the position of the event in the returned audio in miliseconds. This
-position is given with respect to the beginning of the message, not the current audio
-block.
+@var{pos_audio} is the position of the event in the returned audio in
+miliseconds. This position is given with respect to the beginning of
+the message, not the current audio block.
 
 @item
 Each line for the `custom index mark' event has the following form
 
 @example
-index_mark @var{name} @var{pos_text} @var{pos_audio}
+index_mark "@var{name}" @var{pos_text} @var{pos_audio}
 @end example
 
 @var{name} is the name of the index mark as included in the SSML mark element
-by the application.
+by the application. It must be enclosed in quotes because it can contain
+whitespace characters.
 
 @var{pos_text} and @var{pos_audio} have exactly the same meaning as
 defined above for the sentence / word event.
@@ -1164,7 +1292,7 @@ defined above for the sentence / word event.
 
 @heading @code{DATA}
 
-The section @code{DATA} contains audio data in exactly the lenght as is specified
+The section @code{DATA} contains audio data in exactly the length as is specified
 by the @code{data_length} parameter in the @code{PARAMETERS} section for the given
 block.
 
@@ -1176,7 +1304,7 @@ a single block:
 BLOCK 142 1
 PARAMETERS
 data_format=raw
-data_lenght=109368 (bytes)
+data_length=109368 (bytes)
 audio_length=1240  (ms)
 bitrate=16
 sample_rate=44100
@@ -1201,23 +1329,23 @@ END OF DATA
 @node Event Callbacks
 @section Event Callbacks
 
-If the output method is set for audio playback, meaning the audio
-is being played on the speakers behind this API, events and custom
+If the output method is set for audio playback, meaning the audio is
+being played on the audio device behind this API, events and custom
 index marks are reported through callbacks.
 
-@anchor{CallbackFunction}
-@deftp {VariableType} CallbackFunction
+@anchor{callback_function_t}
+@deftp {VariableType} callback_function_t
 
 Type for a function to be used as a callback for reporting
 events and custom index markers.
 
 @verbatim
-typedef int CallbackFunction(EventType *event,
+typedef int callback_function_t(event_type_t *event,
     signed int *n, size_t *text_pos, size_t *audio_pos,
     char **name);
 @end verbatim
 
-@var{event} is the type of the event reported. @pref{EventType}
+@var{event} is the type of the event reported. @pref{event_type_t}
 
 @var{n}, @var{text_pos} and @var{audio_pos} are defined
 in @pref{EVENTS}. Where not aplicable (@var{n} for index marks
@@ -1228,14 +1356,14 @@ and contains the name of the index mark. Otherwise its value is set to NULL.
 
 @end deftp
 
-@deftypefun int register_callback (CallbackFunction* callback_function)
+@deftypefun int register_callback (callback_function_t* callback_function)
 
 This function registers a function to be called whenever an event
 or a custom index mark is reached during playing the audio for
-the synthesized message on the speakers.
+the synthesized message on the audio device.
 
 @arg{callback_function} is the function to be used as a callback. Please
-see @pref{CallbackFunction} for details about the exact form.
+see @pref{callback_function_t} for details about the exact form.
 
 @fireturn
 @end deftypefun
@@ -1249,11 +1377,12 @@ The primary use for this interface is access of applications to a low
 level layer, provided either by a process or a library, managing the
 synthesizer drivers.
 
-A subset of this interface can however be used to interface this low level
-layer with the synthesizer drivers themselves. Even the capabilities provided
-by a driver itself and those provided by the interface using this same driver can
-differ as some functionality can be emulated by this low level library or process.
-Notably SSML conversion or stripping, [interfacing with] audio output and
+A subset of this interface can however be used to interface this low
+level layer with the synthesizer drivers themselves. Even the
+capabilities provided by a driver itself and those provided by the
+interface using this same driver can differ as some functionality can
+be emulated by this low level library or process.  Notably SSML
+conversion or stripping, [interfacing with] audio output and
 callbacks.
 
 The audio retrieval method is designed in such a way that it will bypass
@@ -2084,7 +2213,7 @@ utterances.
 
 @item @niceto
 It would be nice if the synthesizer supported notification of 
-events and custom index marks as defined in @pref{EventType}
+events and custom index marks as defined in @pref{event_type_t}
 and if the application was able to align these events with the synthesized
 audio as in @pref{Audio Retrieval}
 
@@ -2108,6 +2237,11 @@ capabilities.}
 
 @bibitem{MRCP, MRCP, , ,http://www.ietf.org/html.charters/speechsc-charter.html}
 @end enumerate
+
+@node Index of Functions
+@unnumbered Index of Functions
+
+@printindex fn
 
 
 @bye

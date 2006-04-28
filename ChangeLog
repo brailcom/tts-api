@@ -1,6 +1,11 @@
-2006-04-21  Hynek Hanke  <hanke@chopin>
+2006-04-28  Hynek Hanke  <hanke@brailcom.org>
 
-	* tts-api.texi (Requirements on the API): Typo.
-
-	* gen-doc.sh: Use texi2dvi instead of TeX.
+	* API description written.
+	
+	* ChangeLog starts, this is not the first version of the document
+	however. This document was previously discussed	and developed
+	in plain text form on the mailing list accessibility@freedesktop.org
+	for considerable time by various Free Software accessibility groups.
+	Discussions and developement are to be continued on Freedesktop.
+	
 
