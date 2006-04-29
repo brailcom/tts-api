@@ -36,7 +36,7 @@ derived from this document without specific prior written permission.
 
 @c Title page for printed version
 @titlepage
-@title Common Text-to-Speech API (draft, 28.4.2006)
+@title Common Text-to-Speech API @break (draft, 28.4.2006)
 
 @author Hynek Hanke, Brailcom <@email{hanke@@brailcom.org}>
 @author Milan Zamazal, Brailcom <@email{zamazal@@brailcom.org}>
@@ -73,7 +73,7 @@ derived from this document without specific prior written permission.
 @chapter Introduction
 
 The purpose of this document is to define a common low-level interface
-for access the various speech synthesizers on Free Software and Open
+for access of the various speech synthesizers on Free Software and Open
 Source platforms. It is designed to be used by applications that do
 not need advanced functionality like message management (such as
 txt2wave) and by applications providing high-level interfaces (such as
@@ -103,7 +103,7 @@ They are summarized in Appendix A and Appendix B of this document. Appendix
 A deals with general requirements and required functionality, while
 Appendix B describes the extended SSML subset in use and thus also
 defines required parameter settings. The interface definition contained
-in chapter 2 were composed based on these requirements.
+in chapter 2 was composed based on these requirements.
 
 @temporary{A goal is a real implementation of this interface in the
 near future.  The next step will be merging the available
@@ -124,7 +124,7 @@ comments focused and to the point.}
 
 This section defines the low-level TTS interface for use by
 all assistive technologies on free software platforms.
-x
+
 @menu
 * General Points::              
 * Speech Synthesis Driver Discovery::  
@@ -151,7 +151,7 @@ for convenience.
 The general design of the API must be respected in every
 implementation of it. Regardless of language of implementation, the
 full set of functions defined here must be available.
-@item
+
 
 @item
 Function definitions (return value, arguments) must be respected.
@@ -201,7 +201,7 @@ The interface definition uses the type @code{bool_t} not present in C
 for variables whose value can be either @code{TRUE} or @code{FALSE}.
 
 @item
-When a string value containing characters not present in the ASCII
+When a string value can contain characters not present in the ASCII
 table (namely various language specific characters), the data type
 used in this interface is @code{wchar_t} and the corresponding
 expected format for Unicode is UTF-32. When a string is marked as of
@@ -563,7 +563,9 @@ corresponding to the begin and end of a word.
 @end deftp
 
 @anchor{say_text()}
+@anchor{say_text_from_index_mark()}
 @deftypefun message_id_t say_text (message_format_t format, wchar_t* text, unsigned int position, event_type_t position_type)
+@deftypefunx message_id_t say_text_from_index_mark (message_format_t format, wchar_t* text, char* index_mark)
 
 @func{say_text} accepts a text message to synthesize and starts synthesis
 at the given position.
@@ -600,6 +602,9 @@ and is conventionally set to @code{0}.
 @code{EVENT_SENTENCE_START}, @code{EVENT_SENTENCE_END},
 @code{EVENT_WORD_BEGIN} and @code{EVENT_WORD_END}.
 
+@arg{index_mark} is the name of the index mark where synthesis
+should begin.
+
 On success, a unique message ID is returned 
 or 0 is returned (if the synthesizer does not support index
 marking nor defer()).
@@ -624,8 +629,10 @@ exactly the events are and rely on that guess if it did not receive
 the information from the synthesizer earlier.}
 @end deftypefun
 
-@deftypefun message_id_t say_defered (message_id_t message_id, signed int position_from, PositionType position_type)
 @anchor{say_defered()}
+@anchor{say_defered_from_index_mark()}
+@deftypefun message_id_t say_defered (message_id_t message_id, signed int position_from, PositionType position_type)
+@deftypefunx message_id_t say_defered_from_index_mark (message_id_t message_id, char* index_mark)
 
 @func{say_defered} works just like @func{say_text}, except it works on
 messages which were previously defered. Please see @pref{defer()}.
@@ -1150,17 +1157,20 @@ header specifying which message this data belongs to,
 audio data, @code{EVENTS} as a list of events and custom index marks
 reached in this audio data and @code{DATA} containing the data itself.
 
-The following syntax is used for each block:
+The following syntax is used for each block. Where arguments
+are provided, they are separated by one or more spaces (except
+for the PARAMETERS section where spaces are not allowed).
+
+
 @example
 @code{BLOCK} @var{msg_id} @var{block_number}
 @code{PARAMETERS}
 @code{data_format}=@var{data_format}
 @code{data_length}=@var{data_length}
 @code{audio_length}=@var{audio_length}
-@code{bitrate}=@var{bitrate}
 @code{sample_rate}=@var{sample_rate}
 @code{channels}=@var{channels}
-@code{encoding}=@var{architecture_string}
+@code{encoding}=@var{encoding_string}
 @code{END OF PARAMETERS}
 @code{EVENTS}
 @var{type}    @var{text_position}       @var{time_position}
@@ -1201,15 +1211,15 @@ This parameter is required.
 the length of the audio data contained in the @code{DATA} section
 in miliseconds. This parameter is required.
 
-@code{bitrate}, @var{sample_rate} and @var{channels} are only used for
-the ``raw'' data format and they are string-represented numbers
-describing the three common audio parameters. @code{bitrate} gives
-number of bytes per sample, @var{sample_rate} is the sampling frequency
-in Hz and @var{channels} is the number of channels in the audio data.
+@var{sample_rate} and @var{channels} are only used for the ``raw''
+data format and they are string-represented numbers describing the
+three common audio parameters. @var{sample_rate} is the sampling
+frequency in Hz and @var{channels} is the number of channels in the
+audio data.
 
-@var{architecture} is a string describing the architecture details
-of the sender machine relating to the audio data sent. This parameter
-is only used for the ``raw'' audio output. It has the following usual form: 
+@var{encoding} is a string describing the encoding details
+of the audio data. This parameter is only used for the ``raw''
+audio output. It has the following usual form: 
 
 @example
 @var{signed/unsigned}_@var{bits-per-word}_@var{endian}
@@ -1306,7 +1316,6 @@ PARAMETERS
 data_format=raw
 data_length=109368 (bytes)
 audio_length=1240  (ms)
-bitrate=16
 sample_rate=44100
 channels=1
 architecture=S16_LE
@@ -1315,9 +1324,9 @@ EVENTS
 message_start
 word_start       1           0       12
 sentence_start   1           0       12
-index_mark       my-1        14      123
+index_mark       "my-1"      14      123
 word_start       1           19      442
-index_mark       my-2        31      821
+index_mark       "my-2"      31      821
 word_start       2           31      821
 message_end
 END EVENTS
