@@ -1,4 +1,8 @@
-2006-04-28  Hynek Hanke  <hanke@chopin>
+2006-04-29  Hynek Hanke  <hanke@chopin>
+
+	* tts-api.texi (Audio Retrieval): Minor corrections.
+
+2006-04-28  Hynek Hanke  <hanke@brailcom.org>
 
 	* API description written.
 	
