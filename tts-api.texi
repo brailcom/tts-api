@@ -1,7 +1,7 @@
     \input texinfo   @c -*-texinfo-*-
 @c %**start of header
 @setfilename tts-api.info
-@settitle Common Text-to-Speech API (draft, 28.4.2006)
+@settitle Common Text-to-Speech API (draft, 17.5.2006)
 @finalout
 @c @setchapternewpage odd
 @c %**end of header

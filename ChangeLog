@@ -1,3 +1,36 @@
+2006-05-17  Hynek Hanke  <hanke@chopin>
+
+	* tts-api.texi (Speech Control Commands): There is no
+	upper limit on the number of messages postponed through
+	defer() except for system resources or configuration
+	by the administrator.
+	(Speech Control Commands): Note the need to discard()
+	previously deferred messages after the application doesn't
+	need them any more.
+	(Speech Synthesis Commands): say_char: Argument changed
+	from wchar_t* to wchar_t.
+	(General Points): The word 'string' means a null terminated
+	array in C.
+	(General Points): Clarification of use of char* and wchar_t.
+	(Speech Synthesis Commands): If position is in the middle of
+	a tag, start with the text following the tag. If position
+	is in the middle of a word, start right there or with the
+	beginning of the word.
+
+	* tts-api.texi (Voice Selection): set_voice_by_properties
+	only selects a voice under the current driver.
+	(Voice Selection): Speak of Unicode instead of UTF-8
+	character range.
+	(Voice Selection): set_voice_by_properties: all fields
+	can be left blank *except language*
+	(Voice Selection): set_voice_by_properties: specified
+	what `blank field' means.
+	(Speech Synthesis Driver Discovery): list_drivers, list_voices returns
+	newly allocated null-terminated array.
+	(Speech Synthesis Commands): SSML errors are not reported.
+	(Speech Synthesis Commands): say_text_from_character(): new function.
+	(Requirements on the API): UTF-8 changed to Unicode.
+
 2006-05-03  Gary Cramblitt <garycramblitt@comcast.net>
 
 	* tts-api.texi: Spelling, typos, and minor grammar changes.
