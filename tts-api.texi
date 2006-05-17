@@ -65,6 +65,7 @@ derived from this document without specific prior written permission.
 * Extended SSML Markup::        
 * Key Names::                   
 * Requirements on the synthesizers::  
+* Recommended Sound Icons::     
 * Related Specifications::      
 * Index of Functions::          
 @end menu
@@ -176,7 +177,7 @@ codes for a TCP protocol etc).
 @item
 Where this API speaks about callbacks, other means of asynchronous
 notification can be used. (Such as asynchronous messages for a TCP
-protocol.)
+text protocol.)
 
 @end itemize
 
@@ -201,14 +202,21 @@ The interface definition uses the type @code{bool_t} not present in C
 for variables whose value can be either @code{TRUE} or @code{FALSE}.
 
 @item
-When a string value can contain characters not present in the ASCII
-table (namely various language specific characters), the data type
-used in this interface is @code{wchar_t} and the corresponding
-expected format for Unicode is UTF-32. When a string is marked as
-type @code{char*}, it can't contain any wide characters. Only when the
-implementation of the interface (for example TCP protocol) does not
-allow for different types, UTF-8 encoding and wide characters is to be
-used for values marked as @code{wchar_t} in this definition.
+For strings that can possibly contain characters not present in the
+ASCII table (for example various language specific characters), the
+data type used in this interface definition is @code{wchar_t} and the
+corresponding expected format for Unicode is UTF-32. Strings marked
+with type @code{char*}, it must not contain any wide characters. Only
+when the particular implementation of the interface (for example a
+text protocol) does not allow for different types, UTF-8 encoding should
+be used for values marked as @code{wchar_t}.
+
+@item
+When the word 'strings' is used in this interface description, it
+means a NULL-terminated array of characters of type @code{char} for
+single-byte encoding or a NULL-terminated array of type @code{wchar_t}
+for UTF-32 encoding (in other words, four consecutive zero bytes
+at the end). More appropriate data types can be used in other languages.
 
 @end itemize
 
@@ -339,7 +347,9 @@ if performance guidelines are honored on the @niceto{} level.
 
 @var{can_defer} indicates whether the defer capability is
 supported. If this variable is true, @func{defer()}
-and @func{say_deferred} must be supported. See @pref{defer()},
+and @func{say_deferred} must be supported. It is expected
+the synthesizer will be able to defer multiple messages
+at the same time. See @pref{defer()},
 @pref{say_deferred()}.
 
 @var{can_parse_ssml} indicates whether the synthesizer is
@@ -395,13 +405,13 @@ driver_version = "1.2"
 }
 @end deftp
 
-@deftypefun driver_description_t* list_drivers (void)
+@deftypefun driver_description_t** list_drivers (void)
 @anchor{list_drivers()}
 
-@func{list_drivers()} returns a list of available synthesizer drivers.
-Each of the items in the list is of type @code{driver_description_t},
-@pref{driver_description_t}, and must carry a properly filled in variable
-@var{driver_id}.
+@func{list_drivers()} returns a newly allocated null-terminated array
+of available synthesizer drivers.  Each of the items in the array is of
+the type @code{driver_description_t*}, @pref{driver_description_t}, and
+must carry a properly filled in variable @var{driver_id}.
 
 @fperror
 @end deftypefun
@@ -442,7 +452,7 @@ typedef struct {
     wchar_t *name;
     char *language;
     wchar_t *dialect;
-    VoiceGender gender;
+    voice_gender gender;
     unsigned int age;
 } voice_description_t;
 @end verbatim
@@ -466,11 +476,13 @@ of @code{0} means the age is unknown.
 
 @end deftp
 
-@deftypefun voice_description_t* list_voices (char* driver_id)
+@deftypefun voice_description_t** list_voices (char* driver_id)
 @anchor{list_voices}
 
-@func{driver_list_voices} returns the available voices for
-a given driver specified as @var{driver_id}.
+For a given driver specified as @var{driver_id},
+@func{driver_list_voices()} returns a newly allocated null-terminated
+array of describing the available voices in @code{voice_description_t*}
+items, one for each voice.
 
 @arg{driver_id} is the identification string of the driver
 as returned by @func{list_drivers()} @pref{list_drivers()}.
@@ -564,17 +576,22 @@ corresponding to the begin and end of a word.
 
 @anchor{say_text()}
 @anchor{say_text_from_index_mark()}
+@anchor{say_text_from_character()}
 @deftypefun message_id_t say_text (message_format_t format, wchar_t* text, unsigned int position, event_type_t position_type)
 @deftypefunx message_id_t say_text_from_index_mark (message_format_t format, wchar_t* text, char* index_mark)
+@deftypefunx message_id_t say_text_from_character (message_format_t format, wchar_t* text, size_t character_position)
 
 @func{say_text} accepts a text message to synthesize and starts synthesis
 at the given position.
 
 @var{position} and @var{position_type} describe the position in the
-message where synthesis should be started. @var{position} is a counter
-of events of type @var{position_type} from the beginning of the
-message. So for example the position @code{2} of event
-@code{EVENT_WORD_START} describes the start of the second word.
+message where synthesis should be started. @var{position} is a
+positive counter of events of type @var{position_type} from the
+beginning of the message. So for example the position @code{2} of
+event @code{EVENT_WORD_START} describes the start of the second word.
+In a similar way, @var{index_mark} specifies the name of the index
+mark where synthesis should start and @var{character} gives a position
+in the text as a positive number in characters.
 
 There is no explicit upper limit on the size of the text, but the
 server administrator may set one in the configuration or the limit can
@@ -588,13 +605,25 @@ according to users settings. If a validity check is performed and
 the text is found to be invalid, an error code is returned and the
 text is not processed further.
 
-@arg{format} is the format of the message according to @pref{message_format_t}.
+<<<<<<< tts-api.texi
+Error found during processing the document, as for example a markup
+request to set a language which is not available for the synthesizer,
+are not reported.
+
+If the position requested through @func{say_text_from_char} falls in
+the middle of a markup tag, the synthesis should begin with the text
+following the tag. If the position is in the middle of a word, the
+synthesizer can either synthesize from the exact position or it can
+start from the beginning of the word. Neither of these is considered
+an error.
+
+@arg{format} is a format of the message according to @pref{message_format_t}.
 
 @arg{text} is the text to be synthesized in the form according to the
 value of the @var{format} argument.
 
-@arg{position} is an unsigned number counting the events of the given
-type starting from '1'. If @var{position_type} is set to
+@arg{position} is a positive number counting the events of the given type.
+If @var{position_type} is set to
 @code{EVENT_MESSAGE_BEGIN}, the value of this argument is irrelevant
 and is conventionally set to @code{0}.
 
@@ -604,6 +633,9 @@ and is conventionally set to @code{0}.
 
 @arg{index_mark} is the name of the index mark where synthesis
 should begin.
+
+@arg{character_position} is a positive number of the character
+where synthesis should begin.
 
 On success, a unique message ID is returned 
 or 0 is returned (if the synthesizer does not support index
@@ -629,10 +661,13 @@ exactly the events are and rely on that guess if it did not receive
 the information from the synthesizer earlier.}
 @end deftypefun
 
+<<<<<<< tts-api.texi
 @anchor{say_deferred()}
 @anchor{say_deferred_from_index_mark()}
+@anchor{say_deferred_from_character()}
 @deftypefun message_id_t say_deferred (message_id_t message_id, signed int position_from, PositionType position_type)
 @deftypefunx message_id_t say_deferred_from_index_mark (message_id_t message_id, char* index_mark)
+@deftypefunx message_id_t say_deferred_from_character (message_id_t message_id, size_t character)
 
 @func{say_deferred} works just like @func{say_text}, except it works on
 messages which were previously deferred. Please see @pref{defer()}.
@@ -640,7 +675,7 @@ messages which were previously deferred. Please see @pref{defer()}.
 @arg{message_id} is the id of the message to synthesize, as obtained by
 @func{defer()}.
 
-On success, a unique message ID.
+On success, a unique message ID is returned.
 @fierror
 @end deftypefun
 
@@ -657,14 +692,14 @@ marking or defer()).
 @fierror
 @end deftypefun
 
-@deftypefun message_id_t say_char (wchar_t* char)
+@deftypefun message_id_t say_char (wchar_t character)
 
 @func{say_char} accepts a letter (or syllable if the language doesn't
 have individual letters) to synthesize. The command is intended to be
 used for speaking single character messages, produced when the user is
 moving the cursor over a word.
 
-@arg{char} is the character to synthesize.
+@arg{character} is the character to synthesize.
 
 On success, a unique message ID is returned 
 or 0 is returned (if the synthesizer does not support index
@@ -679,8 +714,11 @@ command is intended to be used for general events like `new-line',
 `message-arrived', `question' or `new-email' . The exact sound
 produced or text synthesized depends on user's configuration.
 
-@openissue{Should we specify a list of allowed icon names or should
-it be only names given by the user to the application?}
+The name for the icon can be one of the names given in
+@pref{recommended-sound-icons} or any other name. If the
+icon name is not recognized by the synthesizer, the
+synthesizer tries to synthesize the name of the event
+itself.
 
 If the icon name is not recognized by the synthesizer, the
 synthesizer tries to synthesize the name of the icon itself.
@@ -734,6 +772,16 @@ transferred to the application, but before another synthesis request is
 issued, with no cancel() request in between, the data for the previous
 message are stored.
 
+There is no explicit upper limit on the number of messages
+that can be simultaneously postponed by defer(). There might
+however be a limit imposed by the administrator or forced by
+available system resources. In case such a limit is passed,
+@func{defer()} will return with an error.
+
+After the message is no longer needed, the application must make
+sure to discard it through @func{discard()}, otherwise system
+resources will be wasted.
+
 On success, a unique identifier for the message is returned. See
 @pref{message_id_t}.
 @fierror
@@ -782,7 +830,7 @@ as returned by list_drivers().
 @subsection Voice Selection
 
 Setting parameters in this section only has effect until the
-synthesizer is changed by the application.
+synthesizer driver in use is changed by the application.
 
 @deftypefun int set_voice_by_name (wchar_t* voice_name)
 
@@ -796,9 +844,10 @@ the names returned by @code{list_voices()}.  See @ref{list_voices}.
 
 @deftypefun int set_voice_by_properties (voice_description_t *voice_description, unsigned int variant)
 
-@func{set_voice_by_properties} selects a voice most closely matching
-the given description. The exact voice selected might be subject to
-user preference settings for voice selection inside the synthesizer.
+@func{set_voice_by_properties} selects a voice under the current
+driver most closely matching the given description. The exact voice
+selected might be subject to user preference settings for voice
+selection inside the synthesizer.
 
 There is no guarantee that any of the given parameters will be
 respected, although language generally is supposed to be respected,
@@ -809,19 +858,20 @@ pick the general default voice (if applicable) or choose an
 arbitrary voice. This alone is not considered an error and must not be
 a reason for the synthesizer to refuse further synthesis requests
 unless for some other related reason (as for example the voice being
-unable to handle the given UTF-8 character range).
+unable to handle the given Unicode character range).
 
 The application can check which voice was selected and how closely (if
 at all) it matches the given description.
 
 @arg{voice_description} is a description of the desired voice. Any of
-its entries can be filled in or left blank. Please see
-@ref{voice_description_t} for more information about the format and
-allowed values.
+its entries except language can be filled in or left blank
+(@code{NULL} for strings, @code{0} for integer values, @code{UNKNOWN}
+for VoiceGender). Please see @ref{voice_description_t} for more
+information about the format and allowed values.
 
-@arg{variant} is an unsigned number specifying which of the voices
-matching the description and assigned equal priority inside the
-synthesizer should be selected.
+@arg{variant} is a positive (1,2,3...) number specifying which of the
+voices matching the description and assigned equal priority inside the
+synthesizer should be selected. Please see @pref{SSML} for more details.
 
 @note{This function is different from performing @code{voice_list} and
 following that with @code{set_voice_by_name} as user settings about
@@ -1615,15 +1665,15 @@ affect a `speak' in progress.
 @para{A.4.1, @must}
 The speech synthesizer driver is able to process
 plain text (i.e. text that is not marked up via SSML) encoded in
-the UTF-8 character encoding.
+one of the Unicode character encodings.
 
 See API @pref{say_text()}.
 
 @para{A.4.2, @must}
 The speech synthesizer driver is able to process text formatted using
-extended SSML markup defined in (@pxref{appendix-B}) of this document and
-encoded in UTF-8.  The synthesizer may choose to ignore markup it
-cannot handle or even to ignore all markup as long as it is able to
+extended SSML markup defined in (@pxref{appendix-B}) of this document
+and encoded in Unicode.  The synthesizer may choose to ignore markup
+it cannot handle or even to ignore all markup as long as it is able to
 process the text inside the markup.
 
 @para{A.4.3, @should}
@@ -1843,7 +1893,7 @@ described in @ref{B.1.3} While @code{characters} is intended
 for spelling words and sentences, @code{tts:char} means
 pronouncing the given character (which might be subject
 to different settings, as for example using sound icons to
-represent symbols).	
+represent symbols).
 
 If more than one character is present as the contents
 of the element, this is considered an error.
@@ -2011,7 +2061,7 @@ characters in the range 0 to 31 in the ASCII table and other
 The recognized key names are:
 @itemize
 @item
-Any single UTF-8 character, excluding the exceptions defined above.
+Any single Unicode character, excluding the exceptions defined above.
 @item
 Any of the symbolic key names defined below.
 @item
@@ -2152,14 +2202,14 @@ specifications @pref{appendix-B}.
 The synthesizer must be able to process plain text as input.
 
 @item @niceto
-If the synthesizer can't process UTF-8 encoding for the text, it would
+If the synthesizer can't process Unicode encoding for the text, it would
 be nice if possible to determine the encoding used for a given voice
 and language.
 
 @item @should
 The synthesizer should be able to process text formatted using
 extended SSML markup defined in (@pxref{appendix-B}) of this document
-and encoded in UTF-8.  The synthesizer may choose to ignore markup it
+and encoded in Unicode.  The synthesizer may choose to ignore markup it
 cannot handle or even to ignore all markup as long as it is able to
 process the text inside the markup.
 
@@ -2231,6 +2281,17 @@ text is spoken. It is also essential for rewinding and context pause
 capabilities.}
 @end enumerate
 @end enumerate
+
+@node Recommended Sound Icons
+@appendix Recommended Sound Icons
+@anchor{recommended-sound-icons}
+
+This appnedix specifies a set of recommended names
+of sound icons to be used by the application and
+recognized by the synthesizer. The set is divided
+in groups according to their purpose.
+
+[...]
 
 @node Related Specifications
 @appendix Related Specifications
