@@ -575,23 +575,26 @@ corresponding to the begin and end of a word.
 @end deftp
 
 @anchor{say_text()}
+@anchor{say_text_from_event()}
 @anchor{say_text_from_index_mark()}
 @anchor{say_text_from_character()}
-@deftypefun message_id_t say_text (message_format_t format, wchar_t* text, unsigned int position, event_type_t position_type)
-@deftypefunx message_id_t say_text_from_index_mark (message_format_t format, wchar_t* text, char* index_mark)
-@deftypefunx message_id_t say_text_from_character (message_format_t format, wchar_t* text, size_t character_position)
+@deftypefun mesage_id_t say_text (message_format_t format, wchar_t* text)
+@deftypefunx mesage_id_t say_text_from_event (message_format_t format, wchar_t* text, unsigned int position, event_type_t position_type)
+@deftypefunx mesage_id_t say_text_from_index_mark (message_format_t format, wchar_t* text, char* index_mark)
+@deftypefunx mesage_id_t say_text_from_character (message_format_t format, wchar_t* text, size_t character_position)
 
-@func{say_text} accepts a text message to synthesize and starts synthesis
-at the given position.
+@func{say_text} accepts a text message to synthesize and starts
+synthesis at the given position.
 
 @var{position} and @var{position_type} describe the position in the
-message where synthesis should be started. @var{position} is a
-positive counter of events of type @var{position_type} from the
-beginning of the message. So for example the position @code{2} of
-event @code{EVENT_WORD_START} describes the start of the second word.
-In a similar way, @var{index_mark} specifies the name of the index
-mark where synthesis should start and @var{character} gives a position
-in the text as a positive number in characters.
+message where synthesis should be started. @var{position_type} can be
+either a word or sentence event. @var{position} is a positive counter
+of events of type @var{position_type} from the beginning of the
+message. So for example the position @code{2} of event
+@code{EVENT_WORD_START} describes the start of the second word.  In a
+similar way, @var{index_mark} specifies the name of the index mark
+where synthesis should start and @var{character} gives a position in
+the text as a positive number in characters.
 
 There is no explicit upper limit on the size of the text, but the
 server administrator may set one in the configuration or the limit can
@@ -605,8 +608,7 @@ according to users settings. If a validity check is performed and
 the text is found to be invalid, an error code is returned and the
 text is not processed further.
 
-<<<<<<< tts-api.texi
-Error found during processing the document, as for example a markup
+Errors found during processing the document, as for example a markup
 request to set a language which is not available for the synthesizer,
 are not reported.
 
@@ -622,10 +624,10 @@ an error.
 @arg{text} is the text to be synthesized in the form according to the
 value of the @var{format} argument.
 
-@arg{position} is a positive number counting the events of the given type.
-If @var{position_type} is set to
-@code{EVENT_MESSAGE_BEGIN}, the value of this argument is irrelevant
-and is conventionally set to @code{0}.
+@arg{position} is a positive number counting the events of the given
+type.  If @var{position_type} is set to @code{EVENT_MESSAGE_BEGIN},
+the value of this argument is irrelevant and is conventionally set to
+@code{0}.
 
 @arg{position_type} is one of @code{EVENT_MESSAGE_BEGIN},
 @code{EVENT_SENTENCE_START}, @code{EVENT_SENTENCE_END},
@@ -637,9 +639,8 @@ should begin.
 @arg{character_position} is a positive number of the character
 where synthesis should begin.
 
-On success, a unique message ID is returned 
-or 0 is returned (if the synthesizer does not support index
-marking or defer()).
+On success, a positive value -- a unique message identifier -- is
+returned.
 @fierror
 
 For example calling say_text() with the following arguments
@@ -661,21 +662,25 @@ exactly the events are and rely on that guess if it did not receive
 the information from the synthesizer earlier.}
 @end deftypefun
 
-<<<<<<< tts-api.texi
 @anchor{say_deferred()}
+@anchor{say_deferred_from_position()}
 @anchor{say_deferred_from_index_mark()}
 @anchor{say_deferred_from_character()}
-@deftypefun message_id_t say_deferred (message_id_t message_id, signed int position_from, PositionType position_type)
-@deftypefunx message_id_t say_deferred_from_index_mark (message_id_t message_id, char* index_mark)
-@deftypefunx message_id_t say_deferred_from_character (message_id_t message_id, size_t character)
+@deftypefun mesage_id_t say_deferred (message_id_t message_id)
+@deftypefunx message_id_t say_deferred (message_id_t message_id, signed int position_from, PositionType position_type)
+@deftypefunx mesage_id_t say_deferred_from_index_mark (message_id_t message_id, char* index_mark)
+@deftypefunx mesage_id_t say_deferred_from_character (message_id_t message_id, size_t character)
 
-@func{say_deferred} works just like @func{say_text}, except it works on
-messages which were previously deferred. Please see @pref{defer()}.
+@func{say_deferred} works just like @func{say_text}, except it works
+on messages which were previously deferred and if position is set to
+0, this has an additional meaning of ''start where speech was
+interrupted last time''. Please see @pref{defer()}.
 
 @arg{message_id} is the id of the message to synthesize, as obtained by
 @func{defer()}.
 
-On success, a unique message ID is returned.
+On success, a positive value -- a unique message identifier -- is
+returned.
 @fierror
 @end deftypefun
 
@@ -686,28 +691,27 @@ intended to be used for speaking keys pressed by the user.
 
 @arg{key_name} is a valid key name as defined in @ref{appendix-C}.
 
-On success, a unique message ID is returned 
-or 0 is returned (if the synthesizer does not support index
-marking or defer()).
+On success, a positive value -- a unique message identifier -- is
+returned.
 @fierror
 @end deftypefun
 
-@deftypefun message_id_t say_char (wchar_t character)
+@deftypefun message_id_t say_char (wchar_t character_name)
 
 @func{say_char} accepts a letter (or syllable if the language doesn't
 have individual letters) to synthesize. The command is intended to be
 used for speaking single character messages, produced when the user is
 moving the cursor over a word.
 
-@arg{character} is the character to synthesize.
+@arg{character_name} is the character to synthesize.
 
-On success, a unique message ID is returned 
-or 0 is returned (if the synthesizer does not support index
-marking or defer()).
-@fireturn
+
+On success, a positive value -- a unique message identifier -- is
+returned.
+@fierror
 @end deftypefun
 
-@deftypefun message_id_t say_icon (char* icon)
+@deftypefun message_id_t say_icon (char* icon_name)
 
 @func{say_icon} accepts a general sound icon to synthesize.  The
 command is intended to be used for general events like `new-line',
@@ -723,12 +727,11 @@ itself.
 If the icon name is not recognized by the synthesizer, the
 synthesizer tries to synthesize the name of the icon itself.
 
-@arg{icon} is the name of the icon to synthesize. It must not contain
+@arg{icon_name} is the name of the icon to synthesize. It must not contain
 any whitespace characters.
 
-On success, a unique message ID is returned 
-or 0 is returned (if the synthesizer does not support index
-marking or defer()).
+On success, a positive value -- a unique message identifier -- is
+returned.
 @fierror
 @end deftypefun
 
@@ -752,7 +755,7 @@ not considered an error.
 @end deftypefun
 
 @anchor{defer()}
-@deftypefun message_id_t defer (void)
+@deftypefun void defer (void)
 
 @func{defer} is similar to @func{cancel} except after stopping the
 synthesis process and audio playback the message is not thrown away in
@@ -782,9 +785,7 @@ After the message is no longer needed, the application must make
 sure to discard it through @func{discard()}, otherwise system
 resources will be wasted.
 
-On success, a unique identifier for the message is returned. See
-@pref{message_id_t}.
-@fierror
+@fireturn
 @end deftypefun
 
 @deftypefun int discard (message_id_t message)
@@ -1399,14 +1400,13 @@ Type for a function to be used as a callback for reporting
 events and custom index markers.
 
 @verbatim
-typedef int callback_function_t(event_type_t *event,
-    signed int *n, size_t *text_pos, size_t *audio_pos,
-    char **name);
+typedef int callback_function_t(event_type_t event,
+    signed int n, size_t text_pos, char *name);
 @end verbatim
 
 @var{event} is the type of the event reported. @pref{event_type_t}
 
-@var{n}, @var{text_pos} and @var{audio_pos} are defined
+@var{n} and @var{text_pos} are defined
 in @pref{EVENTS}. Where not applicable (@var{n} for index marks
 and all three for message events), these variables are set to -1.
 
