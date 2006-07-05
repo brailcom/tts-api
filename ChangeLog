@@ -1,3 +1,23 @@
+2006-07-05  Hynek Hanke  <hanke@chopin>
+
+	* tts-api.texi (Speech Synthesis Commands): Position 0 for defer()
+	means ''start where speech was interrupted''. This is necessary
+	for synthesizers who support multilevel pause but don't support
+	index marking.
+
+2006-05-27  Hynek Hanke  <hanke@chopin>
+
+	* tts-api.texi (Speech Synthesis Commands): say_text, say_deferred now
+	accept no position arguments. Separate functions say_text_from_position
+	are now supplied for this purpose. This is more consistent with the
+	other say and defer functions.
+	(Speech Synthesis Commands): say_ functions now don't return 0 as
+	message_id_t meaning "not supported". Having a valid message_id_t
+	is crucial for audio retrieval and as such must be emulated even
+	if index marking and defer() are not supported.
+	(Speech Control Commands): defer() no longer returns message_id
+	as it is unnecessary.
+
 2006-05-17  Hynek Hanke  <hanke@chopin>
 
 	* tts-api.texi (Speech Control Commands): There is no
